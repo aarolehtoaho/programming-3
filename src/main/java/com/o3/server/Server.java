@@ -3,6 +3,8 @@ package com.o3.server;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
@@ -11,7 +13,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 public class Server implements HttpHandler {
-	StringBuilder textDump = new StringBuilder("Dumped text: ");
+	StringBuilder textDump = new StringBuilder("");
 
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
@@ -22,7 +24,8 @@ public class Server implements HttpHandler {
 				handlePOSTResponse(exchange, text);
 				break;
 			case "GET":
-				// Handle GET requests here (users use this to get messages)
+				String responseString = handleGETrequest(exchange);
+				handleGETResponse(exchange, responseString);
 				break;
 			default:
 				// Inform user here that only POST and GET functions are supported and send an error code
@@ -40,12 +43,26 @@ public class Server implements HttpHandler {
 	}
 
 	private String handleGETrequest(HttpExchange httpExchange) {
-		return null;
+		if (textDump.length() > 0) {
+			return textDump.toString();
+		}
+		return "No messages";
 	}
 
 	private void handlePOSTResponse(HttpExchange httpExchange, StringBuilder text) throws IOException {
 		httpExchange.sendResponseHeaders(200, -1);
 		textDump.append(text);
+	}
+
+	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
+		try {
+			byte[] bytes = responseString.getBytes("UTF-8");
+			httpExchange.sendResponseHeaders(200, bytes.length);
+			OutputStream outputStream = httpExchange.getResponseBody();
+			outputStream.write(bytes);
+			outputStream.flush();
+			outputStream.close();
+		} catch (UnsupportedEncodingException e) {}
 	}
 
 	public static void main(String[] args) throws Exception {
