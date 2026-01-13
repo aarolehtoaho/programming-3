@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
@@ -24,12 +23,11 @@ public class Server implements HttpHandler {
 				handlePOSTResponse(exchange, text);
 				break;
 			case "GET":
-				String responseString = handleGETrequest(exchange);
+				String responseString = handleGETrequest();
 				handleGETResponse(exchange, responseString);
 				break;
 			default:
-				// Inform user here that only POST and GET functions are supported and send an error code
-				// 400 with a message “Not supported” (witouth the “).
+				handleResponse(exchange, 400, "Not supported");
 		}
 	}
 
@@ -42,7 +40,7 @@ public class Server implements HttpHandler {
 		inputStream.close();
 	}
 
-	private String handleGETrequest(HttpExchange httpExchange) {
+	private String handleGETrequest() {
 		if (textDump.length() > 0) {
 			return textDump.toString();
 		}
@@ -55,14 +53,16 @@ public class Server implements HttpHandler {
 	}
 
 	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
-		try {
-			byte[] bytes = responseString.getBytes("UTF-8");
-			httpExchange.sendResponseHeaders(200, bytes.length);
-			OutputStream outputStream = httpExchange.getResponseBody();
-			outputStream.write(bytes);
-			outputStream.flush();
-			outputStream.close();
-		} catch (UnsupportedEncodingException e) {}
+		handleResponse(httpExchange, 200, responseString);
+	}
+
+	private void handleResponse(HttpExchange httpExchange, int code, String responseString) throws IOException {
+		byte[] bytes = responseString.getBytes("UTF-8");
+		httpExchange.sendResponseHeaders(code, bytes.length);
+		OutputStream outputStream = httpExchange.getResponseBody();
+		outputStream.write(bytes);
+		outputStream.flush();
+		outputStream.close();
 	}
 
 	public static void main(String[] args) throws Exception {
