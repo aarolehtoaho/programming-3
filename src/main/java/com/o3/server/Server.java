@@ -16,6 +16,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
 
+import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpsConfigurator;
@@ -110,7 +111,11 @@ public class Server implements HttpHandler {
 			};
 			server.setHttpsConfigurator(httpsConfigurator);
 
-			server.createContext("/datarecord", new Server());
+			UserAuthenticator userAuthenticator = new UserAuthenticator();
+			HttpContext httpContext = server.createContext("/datarecord", new Server());
+			httpContext.setAuthenticator(userAuthenticator);
+
+
 			server.setExecutor(null);
 			server.start();			
 		} catch (FileNotFoundException e) {
