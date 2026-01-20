@@ -115,6 +115,7 @@ public class Server implements HttpHandler {
 			HttpContext httpContext = server.createContext("/datarecord", new Server());
 			httpContext.setAuthenticator(userAuthenticator);
 
+			server.createContext("/registration", new RegistrationHandler(userAuthenticator));
 
 			server.setExecutor(null);
 			server.start();			
