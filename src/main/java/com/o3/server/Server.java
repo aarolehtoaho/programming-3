@@ -1,15 +1,26 @@
 package com.o3.server;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.util.stream.Collectors;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.TrustManagerFactory;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
+import com.sun.net.httpserver.HttpsServer;
 
 public class Server implements HttpHandler {
 	StringBuilder textDump = new StringBuilder("");
@@ -65,11 +76,49 @@ public class Server implements HttpHandler {
 		outputStream.close();
 	}
 
+	private static SSLContext myServerSSLContext(String keystoreFile, String passphrase) throws Exception {
+		char[] passphraseChars = passphrase.toCharArray();
+		KeyStore ks = KeyStore.getInstance("JKS");
+		ks.load(new FileInputStream(keystoreFile), passphraseChars);
+
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+		kmf.init(ks, passphraseChars);
+
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+		tmf.init(ks);
+
+		SSLContext ssl = SSLContext.getInstance("TLS");
+		ssl.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+		return ssl;
+	}
+
 	public static void main(String[] args) throws Exception {
-		HttpServer server = com.sun.net.httpserver.HttpServer.create(
-			new java.net.InetSocketAddress(8001), 0);
-		server.createContext("/datarecord", new Server());
-		server.setExecutor(null);
-		server.start();
+		try {
+			HttpsServer server = com.sun.net.httpserver.HttpsServer.create(
+				new java.net.InetSocketAddress(8001), 0);
+
+			SSLContext sslContext = myServerSSLContext("keystore.jks", "ExamplePassword");
+			//SSLContext sslContext = myServerSSLContext(args[0],args[1]);
+			HttpsConfigurator httpsConfigurator = new HttpsConfigurator(sslContext) {
+				public void configure (HttpsParameters params) {
+					InetSocketAddress remote = params.getClientAddress();
+					SSLContext c = getSSLContext();
+					SSLParameters sslparams = c.getDefaultSSLParameters();
+					params.setSSLParameters(sslparams);				
+				}
+			};
+			server.setHttpsConfigurator(httpsConfigurator);
+
+			server.createContext("/datarecord", new Server());
+			server.setExecutor(null);
+			server.start();			
+		} catch (FileNotFoundException e) {
+			System.out.println("Certificate file not found");
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
 	}
 }
