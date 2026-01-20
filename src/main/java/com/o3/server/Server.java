@@ -99,8 +99,7 @@ public class Server implements HttpHandler {
 			HttpsServer server = com.sun.net.httpserver.HttpsServer.create(
 				new java.net.InetSocketAddress(8001), 0);
 
-			SSLContext sslContext = myServerSSLContext("keystore.jks", "ExamplePassword");
-			//SSLContext sslContext = myServerSSLContext(args[0],args[1]);
+			SSLContext sslContext = myServerSSLContext(args[0],args[1]);
 			HttpsConfigurator httpsConfigurator = new HttpsConfigurator(sslContext) {
 				public void configure (HttpsParameters params) {
 					InetSocketAddress remote = params.getClientAddress();
