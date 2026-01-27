@@ -9,12 +9,17 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
@@ -24,15 +29,14 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 public class Server implements HttpHandler {
-	StringBuilder textDump = new StringBuilder("");
+	private List<ObservationRecord> observationRecords = new ArrayList<>();
 
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		switch (exchange.getRequestMethod().toUpperCase()) {
 			case "POST":
-				StringBuilder text = new StringBuilder("");
-				handlePOSTrequest(exchange, text);
-				handlePOSTResponse(exchange, text);
+				int code = handlePOSTrequest(exchange);
+				handlePOSTResponse(exchange, code);
 				break;
 			case "GET":
 				String responseString = handleGETrequest();
@@ -43,25 +47,35 @@ public class Server implements HttpHandler {
 		}
 	}
 
-	private void handlePOSTrequest(HttpExchange httpExchange, StringBuilder stringBuilder) throws IOException {
+	private int handlePOSTrequest(HttpExchange httpExchange) throws IOException {
 		InputStreamReader inputStream = new InputStreamReader(httpExchange.getRequestBody(), StandardCharsets.UTF_8);
 		BufferedReader bufferedReader = new BufferedReader(inputStream);
-		String text = bufferedReader.lines().collect(Collectors.joining("\n"));
-		stringBuilder.append(text);
+		String text = bufferedReader.lines().collect(Collectors.joining("\n")).trim();
+
+		ObservationRecord observationRecord = new ObservationRecord();
+		try {
+			JSONObject json = new JSONObject(text);
+			observationRecord.setTargetBodyName(json.getString("target_body_name"));
+			observationRecord.setCenterBodyName(json.getString("center_body_name"));
+			observationRecord.setEpoch(json.getString("epoch"));
+			observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
+			observationRecord.setStateVector(json.getJSONObject("state_vector"));
+		} catch (JSONException e) {
+			return 405;
+		}
+
 		bufferedReader.close();
 		inputStream.close();
+		observationRecords.add(observationRecord);
+		return 200;
 	}
 
 	private String handleGETrequest() {
-		if (textDump.length() > 0) {
-			return textDump.toString();
-		}
-		return "No messages";
+		return "TODO";
 	}
 
-	private void handlePOSTResponse(HttpExchange httpExchange, StringBuilder text) throws IOException {
-		httpExchange.sendResponseHeaders(200, -1);
-		textDump.append(text);
+	private void handlePOSTResponse(HttpExchange httpExchange, int code) throws IOException {
+		httpExchange.sendResponseHeaders(code, -1);
 	}
 
 	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
