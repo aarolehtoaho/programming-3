@@ -7,6 +7,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -33,19 +36,28 @@ public class RegistrationHandler implements HttpHandler {
     }
 
 	private int handlePOSTrequest(HttpExchange httpExchange) throws IOException {
+        String userName;
+        String password;
+        String email;
+
 		InputStreamReader inputStream = new InputStreamReader(httpExchange.getRequestBody(), StandardCharsets.UTF_8);
 		BufferedReader bufferedReader = new BufferedReader(inputStream);
 
-        String text = bufferedReader.lines().collect(Collectors.joining("\n"));
-        String[] nameAndPassword = text.split(":");
-        if (nameAndPassword.length != 2) {
+        String text = bufferedReader.lines().collect(Collectors.joining("\n")).trim();
+        inputStream.close();
+        bufferedReader.close();
+
+        JSONObject json;
+        try {
+            json = new JSONObject(text);
+            userName = json.getString("username");
+            password = json.getString("password");
+            email = json.getString("email");        
+        } catch (JSONException e) {
             return 405;
         }
 
-		bufferedReader.close();
-		inputStream.close();
-
-        boolean userAdded = this.userAuthenticator.addUser(nameAndPassword[0], nameAndPassword[1]);
+        boolean userAdded = this.userAuthenticator.addUser(userName, password, email);
         return userAdded ? 200 : 403;
 	}
 
@@ -59,7 +71,7 @@ public class RegistrationHandler implements HttpHandler {
                 responseString = "User already registered";
                 break;
             case 405:
-                responseString = "Expected username:password";
+                responseString = "Expected {\"username\": string, \"password\": string, \"email\": string}";
                 break;
             default:
                 responseString = "Not supported";
