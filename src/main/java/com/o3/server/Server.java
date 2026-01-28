@@ -18,6 +18,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -71,7 +72,11 @@ public class Server implements HttpHandler {
 	}
 
 	private String handleGETrequest() {
-		return "TODO";
+		JSONArray responseMessages = new JSONArray();
+		for (ObservationRecord record : observationRecords) {
+			responseMessages.put(record.toJSON());
+		}
+		return responseMessages.toString();
 	}
 
 	private void handlePOSTResponse(HttpExchange httpExchange, int code) throws IOException {
@@ -79,6 +84,12 @@ public class Server implements HttpHandler {
 	}
 
 	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
+		boolean noMessages = responseString.equals("[]");
+		if (noMessages) {
+			httpExchange.sendResponseHeaders(204, -1);
+			return;
+		}
+
 		handleResponse(httpExchange, 200, responseString);
 	}
 
