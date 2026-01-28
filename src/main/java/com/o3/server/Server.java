@@ -56,11 +56,27 @@ public class Server implements HttpHandler {
 		ObservationRecord observationRecord = new ObservationRecord();
 		try {
 			JSONObject json = new JSONObject(text);
+
+			boolean stateVectorMissing = json.isNull("state_vector");
+			boolean orbitalElementsMissing = json.isNull("orbital_elements");
+			boolean invalidMessage = stateVectorMissing && orbitalElementsMissing;
+			if (invalidMessage) {
+				return 405;
+			}
+
 			observationRecord.setTargetBodyName(json.getString("target_body_name"));
 			observationRecord.setCenterBodyName(json.getString("center_body_name"));
 			observationRecord.setEpoch(json.getString("epoch"));
-			observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
-			observationRecord.setStateVector(json.getJSONObject("state_vector"));
+			if (!orbitalElementsMissing) {
+				observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
+			} else {
+				observationRecord.setOrbitalElements(null);
+			}
+			if (!stateVectorMissing) {
+				observationRecord.setStateVector(json.getJSONObject("state_vector"));
+			} else {
+				observationRecord.setStateVector(null);
+			}
 		} catch (JSONException e) {
 			return 405;
 		}
