@@ -20,4 +20,14 @@ public class ObservationRecord {
     public void setEpoch(String epoch) { this.epoch = epoch; }
     public void setOrbitalElements(JSONObject orbitalElements) { this.orbitalElements = orbitalElements; }
     public void setStateVector(JSONObject stateVector) { this.stateVector = stateVector; }
+
+    public JSONObject toJSON() {
+        JSONObject json = new JSONObject();
+        json.put("target_body_name", targetBodyName);
+        json.put("center_body_name", centerBodyName);
+        json.put("epoch", epoch);
+        json.put("orbital_elements", orbitalElements);
+        json.put("state_vector", stateVector);
+        return json;
+    }
 }
