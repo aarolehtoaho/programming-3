@@ -11,14 +11,13 @@ public class UserAuthenticator extends BasicAuthenticator {
     public UserAuthenticator() {
         super("datarecord");
         this.users = new Hashtable<>();
-        users.put("dummy", new User("dummy", "passwd", "dummy@example.com"));
     }
 
-    public boolean addUser(String userName, String password, String email) {
+    public boolean addUser(String userName, String password, String email, String nickname) {
         if (users.containsKey(userName)) {
             return false;
         }
-        users.put(userName, new User(userName, password, email));
+        users.put(userName, new User(userName, password, email, nickname));
         return true;
     }
 

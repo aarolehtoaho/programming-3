@@ -39,6 +39,7 @@ public class RegistrationHandler implements HttpHandler {
         String userName;
         String password;
         String email;
+        String nickname;
 
 		InputStreamReader inputStream = new InputStreamReader(httpExchange.getRequestBody(), StandardCharsets.UTF_8);
 		BufferedReader bufferedReader = new BufferedReader(inputStream);
@@ -52,12 +53,13 @@ public class RegistrationHandler implements HttpHandler {
             json = new JSONObject(text);
             userName = json.getString("username");
             password = json.getString("password");
-            email = json.getString("email");        
+            email = json.getString("email");
+            nickname = json.getString("nickname");
         } catch (JSONException e) {
             return 405;
         }
 
-        boolean userAdded = this.userAuthenticator.addUser(userName, password, email);
+        boolean userAdded = this.userAuthenticator.addUser(userName, password, email, nickname);
         return userAdded ? 200 : 403;
 	}
 
@@ -71,7 +73,7 @@ public class RegistrationHandler implements HttpHandler {
                 responseString = "User already registered";
                 break;
             case 405:
-                responseString = "Expected {\"username\": string, \"password\": string, \"email\": string}";
+                responseString = "Expected {\"username\": string, \"password\": string, \"email\": string, \"nickname\": string}";
                 break;
             default:
                 responseString = "Not supported";
