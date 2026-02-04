@@ -1,5 +1,9 @@
 package com.o3.server;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -9,13 +13,32 @@ public class ObservationRecord {
     private String epoch;
     private JSONObject orbitalElements;
     private JSONObject stateVector;
+    private JSONObject metadata;
+
+    private static int id = 0;
+
+    public ObservationRecord(String recordOwner, String recordPayload) {
+        this.targetBodyName = null;
+        this.centerBodyName = null;
+        this.epoch = null;
+        this.orbitalElements = null;
+        this.stateVector = null;
+        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null,\"id\": 0,\"record_payload\": null}";
+        this.metadata = new JSONObject(metadataStr);
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("UTC"));
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
+        this.metadata.put("record_time_received", formatter.format(now));
+        this.metadata.put("record_owner", recordOwner);
+        this.metadata.put("id", id++);
+        this.metadata.put("record_payload", recordPayload);
+    }
 
     public String getTargetBodyName() { return targetBodyName; }
     public String getCenterBodyName() { return centerBodyName; }
     public String getEpoch() { return epoch; }
     public JSONObject getOrbitalElements() { return orbitalElements; }
     public JSONObject getStateVector() { return stateVector; }
-
+    public JSONObject getMetadata() { return metadata; }
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }
     public void setCenterBodyName(String centerBodyName) { this.centerBodyName = centerBodyName; }
     public void setEpoch(String epoch) { this.epoch = epoch; }
@@ -47,6 +70,7 @@ public class ObservationRecord {
         json.put("epoch", epoch);
         json.put("orbital_elements", orbitalElements);
         json.put("state_vector", stateVector);
+        json.put("metadata", metadata);
         return json;
     }
 }

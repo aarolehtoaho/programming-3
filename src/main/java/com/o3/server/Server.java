@@ -53,7 +53,12 @@ public class Server implements HttpHandler {
 		BufferedReader bufferedReader = new BufferedReader(inputStream);
 		String text = bufferedReader.lines().collect(Collectors.joining("\n")).trim();
 
-		ObservationRecord observationRecord = new ObservationRecord();
+		String username = httpExchange.getPrincipal().getUsername();
+		String recordOwner = ((UserAuthenticator) httpExchange.getHttpContext().getAuthenticator()).getNickname(username);
+		String recordPayload = "Example payload";
+
+		ObservationRecord observationRecord = new ObservationRecord(recordOwner, recordPayload);
+
 		try {
 			JSONObject json = new JSONObject(text);
 
@@ -100,7 +105,7 @@ public class Server implements HttpHandler {
 	}
 
 	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
-		boolean noMessages = responseString.equals("[]");
+		boolean noMessages = "[]".equals(responseString);
 		if (noMessages) {
 			httpExchange.sendResponseHeaders(204, -1);
 			return;

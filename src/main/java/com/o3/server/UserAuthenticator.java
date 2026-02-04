@@ -21,6 +21,14 @@ public class UserAuthenticator extends BasicAuthenticator {
         return true;
     }
 
+    public String getNickname(String username) {
+        User user = users.get(username);
+        if (user != null) {
+            return user.getNickname();
+        }
+        return null;
+    }
+
     @Override
     public boolean checkCredentials(String username, String password) {
         User user = users.get(username);
