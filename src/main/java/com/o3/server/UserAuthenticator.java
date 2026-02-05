@@ -1,28 +1,39 @@
 package com.o3.server;
 
-import java.util.Hashtable;
-import java.util.Map;
+import java.sql.SQLException;
 
 import com.sun.net.httpserver.BasicAuthenticator;
 
 public class UserAuthenticator extends BasicAuthenticator {
-    private Map<String, User> users = null;
+    private static MessageDatabase database = MessageDatabase.getInstance();
     
     public UserAuthenticator() {
         super("datarecord");
-        this.users = new Hashtable<>();
     }
 
     public boolean addUser(String userName, String password, String email, String nickname) {
-        if (users.containsKey(userName)) {
+        if (database.userRegistered(userName)) {
             return false;
         }
-        users.put(userName, new User(userName, password, email, nickname));
+        
+        User newUser = new User(userName, password, email, nickname);
+        try {
+            database.insertUser(newUser);
+        } catch (SQLException e) {
+            return false;
+        }
+
         return true;
     }
 
     public String getNickname(String username) {
-        User user = users.get(username);
+        User user;
+        try {
+            user = database.getUser(username);
+        } catch (SQLException e) {
+            user = null;
+        }
+        
         if (user != null) {
             return user.getNickname();
         }
@@ -31,7 +42,12 @@ public class UserAuthenticator extends BasicAuthenticator {
 
     @Override
     public boolean checkCredentials(String username, String password) {
-        User user = users.get(username);
+        User user;
+        try {
+            user = database.getUser(username);
+        } catch (SQLException e) {
+            user = null;
+        }
         return user != null && user.getPassword().equals(password);
     }
 }
