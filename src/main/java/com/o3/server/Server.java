@@ -55,9 +55,8 @@ public class Server implements HttpHandler {
 
 		String username = httpExchange.getPrincipal().getUsername();
 		String recordOwner = ((UserAuthenticator) httpExchange.getHttpContext().getAuthenticator()).getNickname(username);
-		String recordPayload = "Example payload";
 
-		ObservationRecord observationRecord = new ObservationRecord(recordOwner, recordPayload);
+		ObservationRecord observationRecord = new ObservationRecord(recordOwner);
 
 		try {
 			JSONObject json = new JSONObject(text);
@@ -72,6 +71,7 @@ public class Server implements HttpHandler {
 			observationRecord.setTargetBodyName(json.getString("target_body_name"));
 			observationRecord.setCenterBodyName(json.getString("center_body_name"));
 			observationRecord.setEpoch(json.getString("epoch"));
+			observationRecord.setPayload(json.getString("payload"));
 			if (!orbitalElementsMissing) {
 				observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
 			} else {
