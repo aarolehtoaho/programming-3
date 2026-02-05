@@ -6,6 +6,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -140,6 +141,26 @@ public class MessageDatabase {
         }
     }
 
+    public List<ObservationRecord> getAllMessages() throws SQLException {
+        if (connection == null) {
+            throw new SQLException("Database not initialized.");
+        }
+
+        String queryMessageIdsSQL = "SELECT id FROM messages;";
+        Statement statement = connection.createStatement();
+        ResultSet idResultSet = statement.executeQuery(queryMessageIdsSQL);
+
+        List<ObservationRecord> records = new java.util.ArrayList<>();
+        while (idResultSet.next()) {
+            int id = idResultSet.getInt("id");
+            ObservationRecord record = getMessage(id);
+            assert record != null;
+            records.add(record);
+        }
+        statement.close();
+        return records;
+    }
+
     public User getUser(String username) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
@@ -160,7 +181,11 @@ public class MessageDatabase {
         }
     }
 
-    public boolean userRegistered(String username) throws SQLException {
-        return getUser(username) != null;
+    public boolean userRegistered(String username) {
+        try {
+            return getUser(username) != null;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 }
