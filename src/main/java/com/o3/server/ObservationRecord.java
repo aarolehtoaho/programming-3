@@ -38,7 +38,11 @@ public class ObservationRecord {
     public String getEpoch() { return epoch; }
     public JSONObject getOrbitalElements() { return orbitalElements; }
     public JSONObject getStateVector() { return stateVector; }
-    public JSONObject getMetadata() { return metadata; }
+    public String getTimeReceived() { return metadata.getString("record_time_received"); }
+    public String getRecordOwner() { return metadata.getString("record_owner"); }
+    public int getId() { return metadata.getInt("id"); }
+    public String getPayload() { return metadata.getString("record_payload"); }
+
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }
     public void setCenterBodyName(String centerBodyName) { this.centerBodyName = centerBodyName; }
     public void setEpoch(String epoch) { this.epoch = epoch; }
