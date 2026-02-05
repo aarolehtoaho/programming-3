@@ -96,7 +96,7 @@ public class MessageDatabase {
                 "'" + record.getStateVector().toString() + "', " +
                 "'" + record.getRecordOwner() + "', " +
                 "'" + record.getPayload() + "', " +
-                System.currentTimeMillis() + ");";
+                record.getTimeReceivedAsInt() + ");";
         Statement statement = connection.createStatement();
         statement.executeUpdate(insertMessageSQL);
         statement.close();
@@ -119,10 +119,11 @@ public class MessageDatabase {
             String ownerNickname = resultSet.getString("owner_nickname");
             String payload = resultSet.getString("payload");
 
-            ObservationRecord record = new ObservationRecord(ownerNickname, payload);
+            ObservationRecord record = new ObservationRecord(ownerNickname);
             record.setTargetBodyName(targetBodyName);
             record.setCenterBodyName(centerBodyName);
             record.setEpoch(epoch);
+            record.setPayload(payload);
             try {
                 record.setOrbitalElements(new JSONObject(orbitalElementsStr));
             } catch (JSONException e) {

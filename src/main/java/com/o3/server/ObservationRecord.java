@@ -1,5 +1,6 @@
 package com.o3.server;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,7 +18,7 @@ public class ObservationRecord {
 
     private static int id = 0;
 
-    public ObservationRecord(String recordOwner, String recordPayload) {
+    public ObservationRecord(String recordOwner) {
         this.targetBodyName = null;
         this.centerBodyName = null;
         this.epoch = null;
@@ -25,12 +26,14 @@ public class ObservationRecord {
         this.stateVector = null;
         String metadataStr = "{\"record_time_received\": null,\"record_owner\": null,\"id\": 0,\"record_payload\": null}";
         this.metadata = new JSONObject(metadataStr);
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("UTC"));
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
-        this.metadata.put("record_time_received", formatter.format(now));
+
+        long epochMillis = System.currentTimeMillis();
+        ZonedDateTime received = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("UTC"));
+        String receivedStr = received.format(DateTimeFormatter.ISO_INSTANT);
+
+        this.metadata.put("record_time_received", receivedStr);
         this.metadata.put("record_owner", recordOwner);
         this.metadata.put("id", id++);
-        this.metadata.put("record_payload", recordPayload);
     }
 
     public String getTargetBodyName() { return targetBodyName; }
@@ -39,6 +42,11 @@ public class ObservationRecord {
     public JSONObject getOrbitalElements() { return orbitalElements; }
     public JSONObject getStateVector() { return stateVector; }
     public String getTimeReceived() { return metadata.getString("record_time_received"); }
+    public long getTimeReceivedAsInt() {
+        String timeStr = getTimeReceived();
+        ZonedDateTime received = ZonedDateTime.parse(timeStr);
+        return received.toInstant().toEpochMilli();
+    }
     public String getRecordOwner() { return metadata.getString("record_owner"); }
     public int getId() { return metadata.getInt("id"); }
     public String getPayload() { return metadata.getString("record_payload"); }
@@ -46,6 +54,7 @@ public class ObservationRecord {
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }
     public void setCenterBodyName(String centerBodyName) { this.centerBodyName = centerBodyName; }
     public void setEpoch(String epoch) { this.epoch = epoch; }
+    public void setPayload(String payload) { this.metadata.put("record_payload", payload); }
     public void setOrbitalElements(JSONObject orbitalElements) throws JSONException {
         if (orbitalElements != null) {
             // Throws JSONException if any of the required fields are missing or values are incorrect
