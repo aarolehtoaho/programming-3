@@ -9,7 +9,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
-import java.util.ArrayList;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,7 +30,7 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 public class Server implements HttpHandler {
-	private List<ObservationRecord> observationRecords = new ArrayList<>();
+	private static MessageDatabase database = null;
 
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
@@ -88,13 +88,26 @@ public class Server implements HttpHandler {
 
 		bufferedReader.close();
 		inputStream.close();
-		observationRecords.add(observationRecord);
+		try {
+			database.insertMessage(observationRecord);
+		} catch (SQLException e) {
+			return 500;
+		}
+		
 		return 200;
 	}
 
 	private String handleGETrequest() {
 		JSONArray responseMessages = new JSONArray();
-		for (ObservationRecord record : observationRecords) {
+
+		List<ObservationRecord> records;
+		try {
+			records = database.getAllMessages();
+		} catch (SQLException e) {
+			return "[]";
+		}
+
+		for (ObservationRecord record : records) {
 			responseMessages.put(record.toJSON());
 		}
 		return responseMessages.toString();
@@ -162,6 +175,13 @@ public class Server implements HttpHandler {
 
 			server.createContext("/registration", new RegistrationHandler(userAuthenticator));
 
+			database = MessageDatabase.getInstance();
+			String dbPath = System.getenv("DATABASE_PATH");
+			if (dbPath == null || dbPath.isEmpty()) {
+				throw new Exception("DATABASE_PATH environment variable not set");
+			}
+			database.open(dbPath);
+
 			server.setExecutor(null);
 			server.start();			
 		} catch (FileNotFoundException e) {
@@ -170,6 +190,5 @@ public class Server implements HttpHandler {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 	}
 }
