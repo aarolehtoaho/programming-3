@@ -118,12 +118,6 @@ public class Server implements HttpHandler {
 	}
 
 	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
-		boolean noMessages = "[]".equals(responseString);
-		if (noMessages) {
-			httpExchange.sendResponseHeaders(204, -1);
-			return;
-		}
-
 		handleResponse(httpExchange, 200, responseString);
 	}
 
