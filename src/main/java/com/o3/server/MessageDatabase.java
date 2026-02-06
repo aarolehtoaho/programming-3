@@ -49,7 +49,7 @@ public class MessageDatabase {
                 "nickname TEXT NOT NULL" +
                 ");";
         String createTableMessagesSQL = "CREATE TABLE messages (" +
-                "id INTEGER PRIMARY KEY UNIQUE," +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "target_body_name TEXT NOT NULL," +
                 "center_body_name TEXT NOT NULL," +
                 "epoch TEXT NOT NULL," +
@@ -86,9 +86,8 @@ public class MessageDatabase {
             throw new SQLException("Database not initialized.");
         }
 
-        String insertMessageSQL = "INSERT INTO messages (id, target_body_name, center_body_name, epoch, "+ 
+        String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, "+ 
                 "orbital_elements, state_vector, owner_nickname, payload, time_received) VALUES (" +
-                "'" + record.getId() + "', " +
                 "'" + record.getTargetBodyName() + "', " +
                 "'" + record.getCenterBodyName() + "', " +
                 "'" + record.getEpoch() + "', " +
@@ -118,12 +117,13 @@ public class MessageDatabase {
             String stateVectorStr = resultSet.getString("state_vector");
             String ownerNickname = resultSet.getString("owner_nickname");
             String payload = resultSet.getString("payload");
-
+            String timeReceived = resultSet.getString("time_received");
             ObservationRecord record = new ObservationRecord(ownerNickname);
             record.setTargetBodyName(targetBodyName);
             record.setCenterBodyName(centerBodyName);
             record.setEpoch(epoch);
             record.setPayload(payload);
+            record.setTimeReceived(timeReceived);
             try {
                 record.setOrbitalElements(new JSONObject(orbitalElementsStr));
             } catch (JSONException e) {
@@ -156,6 +156,7 @@ public class MessageDatabase {
             int id = idResultSet.getInt("id");
             ObservationRecord record = getMessage(id);
             assert record != null;
+            record.setId(id);
             records.add(record);
         }
         statement.close();

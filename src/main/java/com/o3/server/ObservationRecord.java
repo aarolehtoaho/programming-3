@@ -15,8 +15,7 @@ public class ObservationRecord {
     private JSONObject orbitalElements;
     private JSONObject stateVector;
     private JSONObject metadata;
-
-    private static int id = 0;
+    private int id;
 
     public ObservationRecord(String recordOwner) {
         this.targetBodyName = null;
@@ -24,16 +23,16 @@ public class ObservationRecord {
         this.epoch = null;
         this.orbitalElements = null;
         this.stateVector = null;
-        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null,\"id\": 0,\"record_payload\": null}";
+        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null,\"record_payload\": null}";
         this.metadata = new JSONObject(metadataStr);
 
         long epochMillis = System.currentTimeMillis();
-        ZonedDateTime received = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("UTC"));
-        String receivedStr = received.format(DateTimeFormatter.ISO_INSTANT);
+        String receivedStr = epochMillisToString(epochMillis);
 
         this.metadata.put("record_time_received", receivedStr);
         this.metadata.put("record_owner", recordOwner);
-        this.metadata.put("id", id++);
+
+        this.id = -1;
     }
 
     public String getTargetBodyName() { return targetBodyName; }
@@ -41,20 +40,25 @@ public class ObservationRecord {
     public String getEpoch() { return epoch; }
     public JSONObject getOrbitalElements() { return orbitalElements; }
     public JSONObject getStateVector() { return stateVector; }
-    public String getTimeReceived() { return metadata.getString("record_time_received"); }
+    public String getTimeReceived() {
+        long timeReceivedMillis = metadata.getLong("record_time_received");
+        return epochMillisToString(timeReceivedMillis);
+    }
     public long getTimeReceivedAsInt() {
         String timeStr = getTimeReceived();
         ZonedDateTime received = ZonedDateTime.parse(timeStr);
         return received.toInstant().toEpochMilli();
     }
     public String getRecordOwner() { return metadata.getString("record_owner"); }
-    public int getId() { return metadata.getInt("id"); }
     public String getPayload() { return metadata.getString("record_payload"); }
+    public int getId() { return id; }
 
+    public void setId(int id) { this.id = id; }
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }
     public void setCenterBodyName(String centerBodyName) { this.centerBodyName = centerBodyName; }
     public void setEpoch(String epoch) { this.epoch = epoch; }
     public void setPayload(String payload) { this.metadata.put("record_payload", payload); }
+    public void setTimeReceived(String timeReceived) { this.metadata.put("record_time_received", timeReceived); }
     public void setOrbitalElements(JSONObject orbitalElements) throws JSONException {
         if (orbitalElements != null) {
             // Throws JSONException if any of the required fields are missing or values are incorrect
@@ -85,5 +89,10 @@ public class ObservationRecord {
         json.put("state_vector", stateVector);
         json.put("metadata", metadata);
         return json;
+    }
+
+    private String epochMillisToString(long epochMillis) {
+        ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("UTC"));
+        return dateTime.format(DateTimeFormatter.ISO_INSTANT);
     }
 }

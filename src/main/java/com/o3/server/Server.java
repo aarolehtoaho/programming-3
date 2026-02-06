@@ -71,7 +71,7 @@ public class Server implements HttpHandler {
 			observationRecord.setTargetBodyName(json.getString("target_body_name"));
 			observationRecord.setCenterBodyName(json.getString("center_body_name"));
 			observationRecord.setEpoch(json.getString("epoch"));
-			observationRecord.setPayload(json.getString("payload"));
+			observationRecord.setPayload(json.getJSONObject("metadata").getString("record_payload"));
 			if (!orbitalElementsMissing) {
 				observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
 			} else {
