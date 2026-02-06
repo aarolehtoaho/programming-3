@@ -91,8 +91,8 @@ public class MessageDatabase {
                 "'" + record.getTargetBodyName() + "', " +
                 "'" + record.getCenterBodyName() + "', " +
                 "'" + record.getEpoch() + "', " +
-                "'" + record.getOrbitalElements().toString() + "', " +
-                "'" + record.getStateVector().toString() + "', " +
+                "'" + record.getOrbitalElements() + "', " +
+                "'" + record.getStateVector() + "', " +
                 "'" + record.getRecordOwner() + "', " +
                 "'" + record.getPayload() + "', " +
                 record.getTimeReceivedAsInt() + ");";
@@ -117,7 +117,7 @@ public class MessageDatabase {
             String stateVectorStr = resultSet.getString("state_vector");
             String ownerNickname = resultSet.getString("owner_nickname");
             String payload = resultSet.getString("payload");
-            String timeReceived = resultSet.getString("time_received");
+            long timeReceived = resultSet.getLong("time_received");
             ObservationRecord record = new ObservationRecord(ownerNickname);
             record.setTargetBodyName(targetBodyName);
             record.setCenterBodyName(centerBodyName);

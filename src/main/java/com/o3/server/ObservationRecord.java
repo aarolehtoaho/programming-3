@@ -38,12 +38,19 @@ public class ObservationRecord {
     public String getTargetBodyName() { return targetBodyName; }
     public String getCenterBodyName() { return centerBodyName; }
     public String getEpoch() { return epoch; }
-    public JSONObject getOrbitalElements() { return orbitalElements; }
-    public JSONObject getStateVector() { return stateVector; }
-    public String getTimeReceived() {
-        long timeReceivedMillis = metadata.getLong("record_time_received");
-        return epochMillisToString(timeReceivedMillis);
+    public String getOrbitalElements() {
+        if (orbitalElements == null) {
+            return "NULL";
+        }
+        return orbitalElements.toString();
     }
+    public String getStateVector() {
+        if (stateVector == null) {
+            return "NULL";
+        }
+        return stateVector.toString();
+    }
+    public String getTimeReceived() { return metadata.getString("record_time_received"); }
     public long getTimeReceivedAsInt() {
         String timeStr = getTimeReceived();
         ZonedDateTime received = ZonedDateTime.parse(timeStr);
@@ -58,7 +65,10 @@ public class ObservationRecord {
     public void setCenterBodyName(String centerBodyName) { this.centerBodyName = centerBodyName; }
     public void setEpoch(String epoch) { this.epoch = epoch; }
     public void setPayload(String payload) { this.metadata.put("record_payload", payload); }
-    public void setTimeReceived(String timeReceived) { this.metadata.put("record_time_received", timeReceived); }
+    public void setTimeReceived(long timeReceived) {
+        String receivedStr = epochMillisToString(timeReceived);
+        this.metadata.put("record_time_received", receivedStr);
+    }
     public void setOrbitalElements(JSONObject orbitalElements) throws JSONException {
         if (orbitalElements != null) {
             // Throws JSONException if any of the required fields are missing or values are incorrect
