@@ -45,7 +45,7 @@ public class MessageDatabase {
         String createTableUsersSQL = "CREATE TABLE users (" +
                 "username TEXT PRIMARY KEY UNIQUE," +
                 "password TEXT NOT NULL," +
-                "email TEXT NOT NULL UNIQUE," +
+                "email TEXT NOT NULL," +
                 "nickname TEXT NOT NULL" +
                 ");";
         String createTableMessagesSQL = "CREATE TABLE messages (" +
