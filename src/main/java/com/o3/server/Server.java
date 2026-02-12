@@ -63,6 +63,7 @@ public class Server implements HttpHandler {
 
 			boolean stateVectorMissing = json.isNull("state_vector");
 			boolean orbitalElementsMissing = json.isNull("orbital_elements");
+			boolean observatoryMissing = json.isNull("observatory");
 			boolean invalidMessage = stateVectorMissing && orbitalElementsMissing;
 			if (invalidMessage) {
 				return 405;
@@ -72,6 +73,11 @@ public class Server implements HttpHandler {
 			observationRecord.setCenterBodyName(json.getString("center_body_name"));
 			observationRecord.setEpoch(json.getString("epoch"));
 			observationRecord.setPayload(json.getJSONObject("metadata").getString("record_payload"));
+			if (!observatoryMissing) {
+				observationRecord.setObservatory(json.getJSONArray("observatory"));
+			} else {
+				observationRecord.setObservatory(null);
+			}
 			if (!orbitalElementsMissing) {
 				observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
 			} else {

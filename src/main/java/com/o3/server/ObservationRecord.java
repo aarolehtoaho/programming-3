@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,7 +16,6 @@ public class ObservationRecord {
     private JSONObject orbitalElements;
     private JSONObject stateVector;
     private JSONObject metadata;
-    private int id;
 
     public ObservationRecord(String recordOwner) {
         this.targetBodyName = null;
@@ -23,7 +23,8 @@ public class ObservationRecord {
         this.epoch = null;
         this.orbitalElements = null;
         this.stateVector = null;
-        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null,\"record_payload\": null}";
+
+        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null, \"id\": -1, \"observatory\": [], \"record_payload\": null}";
         this.metadata = new JSONObject(metadataStr);
 
         long epochMillis = System.currentTimeMillis();
@@ -31,8 +32,6 @@ public class ObservationRecord {
 
         this.metadata.put("record_time_received", receivedStr);
         this.metadata.put("record_owner", recordOwner);
-
-        this.id = -1;
     }
 
     public String getTargetBodyName() { return targetBodyName; }
@@ -58,9 +57,10 @@ public class ObservationRecord {
     }
     public String getRecordOwner() { return metadata.getString("record_owner"); }
     public String getPayload() { return metadata.getString("record_payload"); }
-    public int getId() { return id; }
+    public int getId() { return metadata.getInt("id"); }
+    public JSONArray getObservatory() { return metadata.getJSONArray("observatory"); }
 
-    public void setId(int id) { this.id = id; }
+    public void setId(int id) { this.metadata.put("id", id); }
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }
     public void setCenterBodyName(String centerBodyName) { this.centerBodyName = centerBodyName; }
     public void setEpoch(String epoch) { this.epoch = epoch; }
@@ -88,6 +88,9 @@ public class ObservationRecord {
             stateVector.getJSONArray("velocity_au_per_day");
         }
         this.stateVector = stateVector;
+    }
+    public void setObservatory(JSONArray observatory) {
+        this.metadata.put("observatory", observatory);
     }
 
     public JSONObject toJSON() {

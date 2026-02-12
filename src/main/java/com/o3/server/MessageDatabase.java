@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -87,13 +88,14 @@ public class MessageDatabase {
         }
 
         String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, "+ 
-                "orbital_elements, state_vector, owner_nickname, payload, time_received) VALUES (" +
+                "orbital_elements, state_vector, owner_nickname, observatory, payload, time_received) VALUES (" +
                 "'" + record.getTargetBodyName() + "', " +
                 "'" + record.getCenterBodyName() + "', " +
                 "'" + record.getEpoch() + "', " +
                 "'" + record.getOrbitalElements() + "', " +
                 "'" + record.getStateVector() + "', " +
                 "'" + record.getRecordOwner() + "', " +
+                "'" + record.getObservatory() + "', " +
                 "'" + record.getPayload() + "', " +
                 record.getTimeReceivedAsInt() + ");";
         Statement statement = connection.createStatement();
@@ -117,6 +119,7 @@ public class MessageDatabase {
             String stateVectorStr = resultSet.getString("state_vector");
             String ownerNickname = resultSet.getString("owner_nickname");
             String payload = resultSet.getString("payload");
+            String observatoryStr = resultSet.getString("observatory");
             long timeReceived = resultSet.getLong("time_received");
             ObservationRecord record = new ObservationRecord(ownerNickname);
             record.setTargetBodyName(targetBodyName);
@@ -133,6 +136,11 @@ public class MessageDatabase {
                 record.setStateVector(new JSONObject(stateVectorStr));
             } catch (JSONException e) {
                 record.setStateVector(null);
+            }
+            try {
+                record.setObservatory(new JSONArray(observatoryStr));
+            } catch (JSONException e) {
+                record.setObservatory(null);
             }
             statement.close();
             return record;
