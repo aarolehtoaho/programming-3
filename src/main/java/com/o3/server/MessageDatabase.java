@@ -1,21 +1,24 @@
 package com.o3.server;
 
 import java.io.File;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Base64;
 import java.util.List;
 
+import org.apache.commons.codec.digest.Crypt;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MessageDatabase {
     private static MessageDatabase instance = null;
-
     private static Connection connection = null;
+    private static SecureRandom secureRandom = new SecureRandom();
 
     public static MessageDatabase getInstance() {
         if (instance == null) {
@@ -71,10 +74,13 @@ public class MessageDatabase {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
+        String salt = generateSalt(16);
+        String hash = generateHash(user.getPassword(), salt);
 
-        String insertUserSQL = "INSERT INTO users (username, password, email, nickname) VALUES (" +
+        String insertUserSQL = "INSERT INTO users (username, password, salt, email, nickname) VALUES (" +
                 "'" + user.getUsername() + "', " +
-                "'" + user.getPassword() + "', " +
+                "'" + hash + "', " +
+                "'" + salt + "', " +
                 "'" + user.getEmail() + "', " +
                 "'" + user.getNickname() + "');";
         Statement statement = connection.createStatement();
@@ -184,7 +190,7 @@ public class MessageDatabase {
             String email = resultSet.getString("email");
             String nickname = resultSet.getString("nickname");
             statement.close();
-            return new User(username, password, email, nickname);
+            return new User(username, password, email, nickname, true);
         } else {
             statement.close();
             return null;
@@ -196,6 +202,51 @@ public class MessageDatabase {
             return getUser(username) != null;
         } catch (SQLException e) {
             return false;
+        }
+    }
+
+    public boolean validPassword(User user, String password) {
+        if (!user.isHashed()) {
+            throw new IllegalArgumentException("Password is not hashed");
+        }
+
+        try {
+            String salt = getUserSalt(user);
+            if (salt == null) {
+                return false;
+            }
+            String hashedPassword = generateHash(password, salt);
+            return user.getPassword().equals(hashedPassword);
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+	private String generateSalt(int length) {
+		byte[] salt = new byte[length];
+		secureRandom.nextBytes(salt);
+		return Base64.getEncoder().encodeToString(salt);
+	}
+
+	private String generateHash(String password, String salt) {
+		return Crypt.crypt(password, salt);
+	}
+
+    private String getUserSalt(User user) throws SQLException {
+        if (connection == null) {
+            throw new SQLException("Database not initialized.");
+        }
+
+        String querySaltSQL = "SELECT salt FROM users WHERE username = '" + user.getUsername() + "';";
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(querySaltSQL);
+        if (resultSet.next()) {
+            String salt = resultSet.getString("salt");
+            statement.close();
+            return salt;
+        } else {
+            statement.close();
+            return null;
         }
     }
 }

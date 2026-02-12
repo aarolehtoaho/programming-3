@@ -16,7 +16,7 @@ public class UserAuthenticator extends BasicAuthenticator {
             return false;
         }
         
-        User newUser = new User(userName, password, email, nickname);
+        User newUser = new User(userName, password, email, nickname, false);
         try {
             database.insertUser(newUser);
         } catch (SQLException e) {
@@ -48,6 +48,6 @@ public class UserAuthenticator extends BasicAuthenticator {
         } catch (SQLException e) {
             user = null;
         }
-        return user != null && user.getPassword().equals(password);
+        return user != null && database.validPassword(user, password);
     }
 }
