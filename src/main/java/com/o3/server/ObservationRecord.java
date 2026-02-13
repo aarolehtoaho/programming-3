@@ -58,7 +58,15 @@ public class ObservationRecord {
     public String getRecordOwner() { return metadata.getString("record_owner"); }
     public String getPayload() { return metadata.getString("record_payload"); }
     public int getId() { return metadata.getInt("id"); }
-    public JSONArray getObservatory() { return metadata.getJSONArray("observatory"); }
+    public String getObservatory() {
+        String observatory;
+        try {
+            observatory = metadata.getJSONArray("observatory").toString();
+        } catch (JSONException e) {
+            observatory = "NULL";
+        }
+        return observatory;
+    }
 
     public void setId(int id) { this.metadata.put("id", id); }
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }

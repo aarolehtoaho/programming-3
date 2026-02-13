@@ -62,6 +62,7 @@ public class MessageDatabase {
                 "epoch TEXT NOT NULL," +
                 "orbital_elements TEXT," +
                 "state_vector TEXT," +
+                "observatory TEXT," +
                 "owner_nickname TEXT NOT NULL," +
                 "payload TEXT," +
                 "time_received INTEGER NOT NULL" +

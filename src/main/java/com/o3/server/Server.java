@@ -96,6 +96,7 @@ public class Server implements HttpHandler {
 		try {
 			MessageDatabase.getInstance().insertMessage(observationRecord);
 		} catch (SQLException e) {
+			e.printStackTrace();
 			return 500;
 		}
 		
