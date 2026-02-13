@@ -20,14 +20,14 @@ public class MessageDatabase {
     private static Connection connection = null;
     private static SecureRandom secureRandom = new SecureRandom();
 
-    public static MessageDatabase getInstance() {
+    public synchronized static MessageDatabase getInstance() {
         if (instance == null) {
             instance = new MessageDatabase();
         }
         return instance;
     }
 
-    public void open(String dbPath) throws SQLException {
+    public synchronized void open(String dbPath) throws SQLException {
         String connectionAddress = "jdbc:sqlite:" + dbPath;
         File dbFile = new File(dbPath);
         boolean dbExists = dbFile.exists() && !dbFile.isDirectory();
@@ -40,7 +40,7 @@ public class MessageDatabase {
         
     }
 
-    private void initializeDatabase(String connectionAddress) throws SQLException {
+    private synchronized void initializeDatabase(String connectionAddress) throws SQLException {
         connection = DriverManager.getConnection(connectionAddress);
         if (connection == null) {
             throw new SQLException("Failed to create database connection.");
@@ -70,7 +70,7 @@ public class MessageDatabase {
         statement.close();
     }
 
-    public void insertUser(User user) throws SQLException {
+    public synchronized void insertUser(User user) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
@@ -88,7 +88,7 @@ public class MessageDatabase {
         statement.close();
     }
 
-    public void insertMessage(ObservationRecord record) throws SQLException {
+    public synchronized void insertMessage(ObservationRecord record) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
@@ -109,7 +109,7 @@ public class MessageDatabase {
         statement.close();
     }
 
-    public ObservationRecord getMessage(int id) throws SQLException {
+    public synchronized ObservationRecord getMessage(int id) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
@@ -156,7 +156,7 @@ public class MessageDatabase {
         }
     }
 
-    public List<ObservationRecord> getAllMessages() throws SQLException {
+    public synchronized List<ObservationRecord> getAllMessages() throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
@@ -177,7 +177,7 @@ public class MessageDatabase {
         return records;
     }
 
-    public User getUser(String username) throws SQLException {
+    public synchronized User getUser(String username) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
@@ -197,7 +197,7 @@ public class MessageDatabase {
         }
     }
 
-    public boolean userRegistered(String username) {
+    public synchronized boolean userRegistered(String username) {
         try {
             return getUser(username) != null;
         } catch (SQLException e) {
@@ -205,7 +205,7 @@ public class MessageDatabase {
         }
     }
 
-    public boolean validPassword(User user, String password) {
+    public synchronized boolean validPassword(User user, String password) {
         if (!user.isHashed()) {
             throw new IllegalArgumentException("Password is not hashed");
         }
@@ -232,7 +232,7 @@ public class MessageDatabase {
 		return Crypt.crypt(password, salt);
 	}
 
-    private String getUserSalt(User user) throws SQLException {
+    private synchronized String getUserSalt(User user) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }

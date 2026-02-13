@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -30,8 +31,6 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 public class Server implements HttpHandler {
-	private static MessageDatabase database = null;
-
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		switch (exchange.getRequestMethod().toUpperCase()) {
@@ -95,7 +94,7 @@ public class Server implements HttpHandler {
 		bufferedReader.close();
 		inputStream.close();
 		try {
-			database.insertMessage(observationRecord);
+			MessageDatabase.getInstance().insertMessage(observationRecord);
 		} catch (SQLException e) {
 			return 500;
 		}
@@ -108,7 +107,7 @@ public class Server implements HttpHandler {
 
 		List<ObservationRecord> records;
 		try {
-			records = database.getAllMessages();
+			records = MessageDatabase.getInstance().getAllMessages();
 		} catch (SQLException e) {
 			return "[]";
 		}
@@ -175,14 +174,14 @@ public class Server implements HttpHandler {
 
 			server.createContext("/registration", new RegistrationHandler(userAuthenticator));
 
-			database = MessageDatabase.getInstance();
+			MessageDatabase database = MessageDatabase.getInstance();
 			String dbPath = System.getenv("DATABASE_PATH");
 			if (dbPath == null || dbPath.isEmpty()) {
 				throw new Exception("DATABASE_PATH environment variable not set");
 			}
 			database.open(dbPath);
 
-			server.setExecutor(null);
+			server.setExecutor(Executors.newCachedThreadPool());
 			server.start();			
 		} catch (FileNotFoundException e) {
 			System.out.println("Certificate file not found");

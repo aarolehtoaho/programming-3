@@ -5,20 +5,14 @@ import java.sql.SQLException;
 import com.sun.net.httpserver.BasicAuthenticator;
 
 public class UserAuthenticator extends BasicAuthenticator {
-    private static MessageDatabase database = MessageDatabase.getInstance();
-    
     public UserAuthenticator() {
         super("datarecord");
     }
 
     public boolean addUser(String userName, String password, String email, String nickname) {
-        if (database.userRegistered(userName)) {
-            return false;
-        }
-        
         User newUser = new User(userName, password, email, nickname, false);
         try {
-            database.insertUser(newUser);
+            MessageDatabase.getInstance().insertUser(newUser);
         } catch (SQLException e) {
             return false;
         }
@@ -29,7 +23,7 @@ public class UserAuthenticator extends BasicAuthenticator {
     public String getNickname(String username) {
         User user;
         try {
-            user = database.getUser(username);
+            user = MessageDatabase.getInstance().getUser(username);
         } catch (SQLException e) {
             user = null;
         }
@@ -44,10 +38,10 @@ public class UserAuthenticator extends BasicAuthenticator {
     public boolean checkCredentials(String username, String password) {
         User user;
         try {
-            user = database.getUser(username);
+            user = MessageDatabase.getInstance().getUser(username);
         } catch (SQLException e) {
             user = null;
         }
-        return user != null && database.validPassword(user, password);
+        return user != null && MessageDatabase.getInstance().validPassword(user, password);
     }
 }
