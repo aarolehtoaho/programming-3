@@ -1,6 +1,9 @@
 package com.o3.server;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,7 +13,6 @@ import java.sql.Statement;
 import java.util.Base64;
 import java.util.List;
 
-import org.apache.commons.codec.digest.Crypt;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,6 +51,7 @@ public class MessageDatabase {
         String createTableUsersSQL = "CREATE TABLE users (" +
                 "username TEXT PRIMARY KEY UNIQUE," +
                 "password TEXT NOT NULL," +
+                "salt TEXT NOT NULL," +
                 "email TEXT NOT NULL," +
                 "nickname TEXT NOT NULL" +
                 ");";
@@ -75,7 +78,12 @@ public class MessageDatabase {
             throw new SQLException("Database not initialized.");
         }
         String salt = generateSalt(16);
-        String hash = generateHash(user.getPassword(), salt);
+        String hash;
+        try {
+            hash = generateHash(user.getPassword(), salt, "SHA-256", "UTF-8");
+        } catch (Exception e) {
+            throw new SQLException("Failed to generate password hash.", e);
+        }
 
         String insertUserSQL = "INSERT INTO users (username, password, salt, email, nickname) VALUES (" +
                 "'" + user.getUsername() + "', " +
@@ -215,9 +223,12 @@ public class MessageDatabase {
             if (salt == null) {
                 return false;
             }
-            String hashedPassword = generateHash(password, salt);
+            String hashedPassword = generateHash(password, salt, "SHA-256", "UTF-8");
             return user.getPassword().equals(hashedPassword);
         } catch (SQLException e) {
+            return false;
+        } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
+            assert false : "Encoding or algorithm not supported";
             return false;
         }
     }
@@ -228,8 +239,13 @@ public class MessageDatabase {
 		return Base64.getEncoder().encodeToString(salt);
 	}
 
-	private String generateHash(String password, String salt) {
-		return Crypt.crypt(password, salt);
+	private String generateHash(String password, String salt, String algorithm, String encoding) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        //return Crypt.crypt(password, salt); //slow
+        MessageDigest md = MessageDigest.getInstance(algorithm);
+        String combined = password + salt;
+        byte[] hashBytes = md.digest(combined.getBytes(encoding));
+        return Base64.getEncoder().encodeToString(hashBytes);
+
 	}
 
     private synchronized String getUserSalt(User user) throws SQLException {
