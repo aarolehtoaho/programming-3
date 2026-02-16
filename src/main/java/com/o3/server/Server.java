@@ -66,7 +66,7 @@ public class Server implements HttpHandler {
 			boolean orbitalElementsMissing = json.isNull("orbital_elements");
 			boolean observatoryMissing = json.getJSONObject("metadata").isNull("observatory");
 			boolean invalidMessage = stateVectorMissing && orbitalElementsMissing;
-			if (invalidMessage) {
+			if (invalidMessage || !validMessageJson(json)) {
 				return 405;
 			}
 
@@ -101,6 +101,37 @@ public class Server implements HttpHandler {
 		}
 		
 		return 200;
+	}
+
+	private boolean validMessageJson(JSONObject json) {
+		boolean missingData = json.isNull("target_body_name") || json.isNull("center_body_name") || json.isNull("epoch");
+		if (missingData) {
+			return false;
+		}
+
+		boolean invalidTypes = json.optString("target_body_name", "").isEmpty() ||
+			json.optString("center_body_name", "").isEmpty() ||
+			json.optString("epoch", "").isEmpty();
+		if (invalidTypes) {
+			return false;
+		}
+
+		boolean invalidOrbitalElements = !json.isNull("orbital_elements") && (
+			json.getJSONObject("orbital_elements").optDouble("semi_major_axis_au", Double.NaN) == Double.NaN ||
+			json.getJSONObject("orbital_elements").optDouble("eccentricity", Double.NaN) == Double.NaN ||
+			json.getJSONObject("orbital_elements").optDouble("inclination_deg", Double.NaN) == Double.NaN ||
+			json.getJSONObject("orbital_elements").optDouble("longitude_ascending_node_deg", Double.NaN) == Double.NaN ||
+			json.getJSONObject("orbital_elements").optDouble("argument_of_periapsis_deg", Double.NaN) == Double.NaN ||
+			json.getJSONObject("orbital_elements").optDouble("mean_anomaly_deg", Double.NaN) == Double.NaN);
+		if (invalidOrbitalElements) {
+			return false;
+		}
+
+		boolean invalidStateVector = !json.isNull("state_vector") && (
+			json.getJSONObject("state_vector").optJSONArray("position_au") == null ||
+			json.getJSONObject("state_vector").optJSONArray("velocity_au_per_day") == null);
+
+		return !invalidStateVector;
 	}
 
 	private String handleGETrequest() {
