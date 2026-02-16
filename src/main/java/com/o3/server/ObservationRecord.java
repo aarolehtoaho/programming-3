@@ -97,7 +97,23 @@ public class ObservationRecord {
         }
         this.stateVector = stateVector;
     }
-    public void setObservatory(JSONArray observatory) {
+
+    public void setObservatory(JSONArray observatory) throws JSONException {
+        if (observatory == null) {
+            this.metadata.put("observatory", observatory);
+            return;
+        }
+        JSONObject observatoryData = null;
+        if (observatory.length() == 1) {
+            observatoryData = observatory.getJSONObject(0);
+        }
+        if (observatoryData == null ||
+            !observatoryData.has("latitude") ||
+            !observatoryData.has("longitude") ||
+            !observatoryData.has("observatory_name")) {
+            throw new JSONException("Invalid observatory data");
+        }        
+
         this.metadata.put("observatory", observatory);
     }
 
