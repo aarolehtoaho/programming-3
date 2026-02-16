@@ -51,6 +51,8 @@ public class Server implements HttpHandler {
 		InputStreamReader inputStream = new InputStreamReader(httpExchange.getRequestBody(), StandardCharsets.UTF_8);
 		BufferedReader bufferedReader = new BufferedReader(inputStream);
 		String text = bufferedReader.lines().collect(Collectors.joining("\n")).trim();
+		bufferedReader.close();
+		inputStream.close();
 
 		String username = httpExchange.getPrincipal().getUsername();
 		String recordOwner = ((UserAuthenticator) httpExchange.getHttpContext().getAuthenticator()).getNickname(username);
@@ -91,8 +93,6 @@ public class Server implements HttpHandler {
 			return 405;
 		}
 
-		bufferedReader.close();
-		inputStream.close();
 		try {
 			MessageDatabase.getInstance().insertMessage(observationRecord);
 		} catch (SQLException e) {
@@ -183,7 +183,7 @@ public class Server implements HttpHandler {
 			database.open(dbPath);
 
 			server.setExecutor(Executors.newCachedThreadPool());
-			server.start();			
+			server.start();
 		} catch (FileNotFoundException e) {
 			System.out.println("Certificate file not found");
 			e.printStackTrace();
