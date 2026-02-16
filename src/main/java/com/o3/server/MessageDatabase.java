@@ -1,18 +1,15 @@
 package com.o3.server;
 
 import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Base64;
 import java.util.List;
 
+import org.apache.commons.codec.digest.Crypt;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,7 +48,6 @@ public class MessageDatabase {
         String createTableUsersSQL = "CREATE TABLE users (" +
                 "username TEXT PRIMARY KEY UNIQUE," +
                 "password TEXT NOT NULL," +
-                "salt TEXT NOT NULL," +
                 "email TEXT NOT NULL," +
                 "nickname TEXT NOT NULL" +
                 ");";
@@ -78,18 +74,12 @@ public class MessageDatabase {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
         }
-        String salt = generateSalt(16);
-        String hash;
-        try {
-            hash = generateHash(user.getPassword(), salt, "SHA-256", "UTF-8");
-        } catch (Exception e) {
-            throw new SQLException("Failed to generate password hash.", e);
-        }
 
-        String insertUserSQL = "INSERT INTO users (username, password, salt, email, nickname) VALUES (" +
+        String hash = generateHash(user.getPassword());
+
+        String insertUserSQL = "INSERT INTO users (username, password, email, nickname) VALUES (" +
                 "'" + user.getUsername() + "', " +
                 "'" + hash + "', " +
-                "'" + salt + "', " +
                 "'" + user.getEmail() + "', " +
                 "'" + user.getNickname() + "');";
         Statement statement = connection.createStatement();
@@ -247,51 +237,15 @@ public class MessageDatabase {
             throw new IllegalArgumentException("Password is not hashed");
         }
 
-        try {
-            String salt = getUserSalt(user);
-            if (salt == null) {
-                return false;
-            }
-            String hashedPassword = generateHash(password, salt, "SHA-256", "UTF-8");
-            return user.getPassword().equals(hashedPassword);
-        } catch (SQLException e) {
-            return false;
-        } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
-            assert false : "Encoding or algorithm not supported";
-            return false;
-        }
+        return verifyHash(password, user.getPassword());
+
     }
 
-	private String generateSalt(int length) {
-		byte[] salt = new byte[length];
-		secureRandom.nextBytes(salt);
-		return Base64.getEncoder().encodeToString(salt);
+	private String generateHash(String password) {
+        return Crypt.crypt(password);
 	}
 
-	private String generateHash(String password, String salt, String algorithm, String encoding) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-        //return Crypt.crypt(password, salt); //slow
-        MessageDigest md = MessageDigest.getInstance(algorithm);
-        String combined = password + salt;
-        byte[] hashBytes = md.digest(combined.getBytes(encoding));
-        return Base64.getEncoder().encodeToString(hashBytes);
-
-	}
-
-    private synchronized String getUserSalt(User user) throws SQLException {
-        if (connection == null) {
-            throw new SQLException("Database not initialized.");
-        }
-
-        String querySaltSQL = "SELECT salt FROM users WHERE username = '" + user.getUsername() + "';";
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(querySaltSQL);
-        if (resultSet.next()) {
-            String salt = resultSet.getString("salt");
-            statement.close();
-            return salt;
-        } else {
-            statement.close();
-            return null;
-        }
+    private boolean verifyHash(String password, String storedHash) {
+        return Crypt.crypt(password, storedHash).equals(storedHash);
     }
 }
