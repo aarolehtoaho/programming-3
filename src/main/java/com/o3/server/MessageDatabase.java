@@ -4,6 +4,7 @@ import java.io.File;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -36,7 +37,6 @@ public class MessageDatabase {
         } else {
             connection = DriverManager.getConnection(connectionAddress);
         }
-        
     }
 
     private synchronized void initializeDatabase(String connectionAddress) throws SQLException {
@@ -77,14 +77,14 @@ public class MessageDatabase {
 
         String hash = generateHash(user.getPassword());
 
-        String insertUserSQL = "INSERT INTO users (username, password, email, nickname) VALUES (" +
-                "'" + user.getUsername() + "', " +
-                "'" + hash + "', " +
-                "'" + user.getEmail() + "', " +
-                "'" + user.getNickname() + "');";
-        Statement statement = connection.createStatement();
-        statement.executeUpdate(insertUserSQL);
-        statement.close();
+        String insertUserSQL = "INSERT INTO users (username, password, email, nickname) VALUES (?, ?, ?, ?);";
+        try (PreparedStatement statement = connection.prepareStatement(insertUserSQL)) {
+            statement.setString(1, user.getUsername());
+            statement.setString(2, hash);
+            statement.setString(3, user.getEmail());
+            statement.setString(4, user.getNickname());
+            statement.executeUpdate();
+        }
     }
 
     public synchronized void insertMessage(ObservationRecord record) throws SQLException {
@@ -92,66 +92,40 @@ public class MessageDatabase {
             throw new SQLException("Database not initialized.");
         }
 
-        String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, "+ 
-                "orbital_elements, state_vector, owner_nickname, observatory, payload, time_received) VALUES (" +
-                "'" + record.getTargetBodyName() + "', " +
-                "'" + record.getCenterBodyName() + "', " +
-                "'" + record.getEpoch() + "', " +
-                "'" + record.getOrbitalElements() + "', " +
-                "'" + record.getStateVector() + "', " +
-                "'" + record.getRecordOwner() + "', " +
-                "'" + record.getObservatory() + "', " +
-                "'" + record.getPayload() + "', " +
-                record.getTimeReceivedAsInt() + ");";
-        Statement statement = connection.createStatement();
-        statement.executeUpdate(insertMessageSQL);
-        statement.close();
-    }
+        String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, " +
+                "orbital_elements, state_vector, owner_nickname, observatory, payload, time_received) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        try (PreparedStatement statement = connection.prepareStatement(insertMessageSQL)) {
+            statement.setString(1, record.getTargetBodyName());
+            statement.setString(2, record.getCenterBodyName());
+            statement.setString(3, record.getEpoch());
 
-    public synchronized ObservationRecord getMessage(int id) throws SQLException {
-        if (connection == null) {
-            throw new SQLException("Database not initialized.");
-        }
+            String orbitalElements = record.getOrbitalElements();
+            if ("NULL".equalsIgnoreCase(orbitalElements)) {
+                statement.setNull(4, java.sql.Types.VARCHAR);
+            } else {
+                statement.setString(4, orbitalElements);
+            }
 
-        String queryMessageSQL = "SELECT * FROM messages WHERE id = " + id + ";";
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(queryMessageSQL);
-        if (resultSet.next()) {
-            String targetBodyName = resultSet.getString("target_body_name");
-            String centerBodyName = resultSet.getString("center_body_name");
-            String epoch = resultSet.getString("epoch");
-            String orbitalElementsStr = resultSet.getString("orbital_elements");
-            String stateVectorStr = resultSet.getString("state_vector");
-            String ownerNickname = resultSet.getString("owner_nickname");
-            String payload = resultSet.getString("payload");
-            String observatoryStr = resultSet.getString("observatory");
-            long timeReceived = resultSet.getLong("time_received");
-            ObservationRecord record = new ObservationRecord(ownerNickname);
-            record.setTargetBodyName(targetBodyName);
-            record.setCenterBodyName(centerBodyName);
-            record.setEpoch(epoch);
-            record.setPayload(payload);
-            record.setTimeReceived(timeReceived);
-            try {
-                record.setOrbitalElements(new JSONObject(orbitalElementsStr));
-            } catch (JSONException e) {
-                record.setOrbitalElements(null);
+            String stateVector = record.getStateVector();
+            if ("NULL".equalsIgnoreCase(stateVector)) {
+                statement.setNull(5, java.sql.Types.VARCHAR);
+            } else {
+                statement.setString(5, stateVector);
             }
-            try {
-                record.setStateVector(new JSONObject(stateVectorStr));
-            } catch (JSONException e) {
-                record.setStateVector(null);
+
+            statement.setString(6, record.getRecordOwner());
+
+            String observatory = record.getObservatory();
+            if ("NULL".equalsIgnoreCase(observatory)) {
+                statement.setNull(7, java.sql.Types.VARCHAR);
+            } else {
+                statement.setString(7, observatory);
             }
-            try {
-                record.setObservatory(new JSONArray(observatoryStr));
-            } catch (JSONException e) {
-                record.setObservatory(null);
-            }
-            statement.close();
-            return record;
-        } else {
-            statement.close();
-            return null;
+
+            statement.setString(8, record.getPayload());
+            statement.setLong(9, record.getTimeReceivedAsInt());
+            statement.executeUpdate();
         }
     }
 
@@ -183,21 +157,29 @@ public class MessageDatabase {
             record.setEpoch(epoch);
             record.setPayload(payload);
             record.setTimeReceived(timeReceived);
+
+            JSONObject oribitalElements;
+            JSONObject stateVector;
+            JSONArray observatory;
             try {
-                record.setOrbitalElements(new JSONObject(orbitalElementsStr));
-            } catch (JSONException e) {
-                record.setOrbitalElements(null);
+                oribitalElements = new JSONObject(orbitalElementsStr);
+            } catch (JSONException | NullPointerException e) {
+                oribitalElements = null;
             }
             try {
-                record.setStateVector(new JSONObject(stateVectorStr));
-            } catch (JSONException e) {
-                record.setStateVector(null);
+                stateVector = new JSONObject(stateVectorStr);
+            } catch (JSONException | NullPointerException e) {
+                stateVector = null;
             }
             try {
-                record.setObservatory(new JSONArray(observatoryStr));
-            } catch (JSONException e) {
-                record.setObservatory(null);
+                observatory = new JSONArray(observatoryStr);
+            } catch (JSONException | NullPointerException e) {
+                observatory = null;
             }
+            record.setOrbitalElements(oribitalElements);
+            record.setStateVector(stateVector);
+            record.setObservatory(observatory);
+
             records.add(record);
         }
         statement.close();
