@@ -170,16 +170,44 @@ public class MessageDatabase {
             throw new SQLException("Database not initialized.");
         }
 
-        String queryMessageIdsSQL = "SELECT id FROM messages;";
+        String queryMessagesSQL = "SELECT * FROM messages;";
         Statement statement = connection.createStatement();
-        ResultSet idResultSet = statement.executeQuery(queryMessageIdsSQL);
+        ResultSet resultSet = statement.executeQuery(queryMessagesSQL);
 
         List<ObservationRecord> records = new java.util.ArrayList<>();
-        while (idResultSet.next()) {
-            int id = idResultSet.getInt("id");
-            ObservationRecord record = getMessage(id);
-            assert record != null;
+        while (resultSet.next()) {
+            int id = resultSet.getInt("id");
+            String targetBodyName = resultSet.getString("target_body_name");
+            String centerBodyName = resultSet.getString("center_body_name");
+            String epoch = resultSet.getString("epoch");
+            String orbitalElementsStr = resultSet.getString("orbital_elements");
+            String stateVectorStr = resultSet.getString("state_vector");
+            String ownerNickname = resultSet.getString("owner_nickname");
+            String payload = resultSet.getString("payload");
+            String observatoryStr = resultSet.getString("observatory");
+            long timeReceived = resultSet.getLong("time_received");
+            ObservationRecord record = new ObservationRecord(ownerNickname);
             record.setId(id);
+            record.setTargetBodyName(targetBodyName);
+            record.setCenterBodyName(centerBodyName);
+            record.setEpoch(epoch);
+            record.setPayload(payload);
+            record.setTimeReceived(timeReceived);
+            try {
+                record.setOrbitalElements(new JSONObject(orbitalElementsStr));
+            } catch (JSONException e) {
+                record.setOrbitalElements(null);
+            }
+            try {
+                record.setStateVector(new JSONObject(stateVectorStr));
+            } catch (JSONException e) {
+                record.setStateVector(null);
+            }
+            try {
+                record.setObservatory(new JSONArray(observatoryStr));
+            } catch (JSONException e) {
+                record.setObservatory(null);
+            }
             records.add(record);
         }
         statement.close();
