@@ -62,11 +62,7 @@ public class Server implements HttpHandler {
 		try {
 			JSONObject json = new JSONObject(text);
 
-			boolean stateVectorMissing = json.isNull("state_vector");
-			boolean orbitalElementsMissing = json.isNull("orbital_elements");
-			boolean observatoryMissing = json.getJSONObject("metadata").isNull("observatory");
-			boolean invalidMessage = stateVectorMissing && orbitalElementsMissing;
-			if (invalidMessage || !validMessageJson(json)) {
+			if (!validMessageJson(json)) {
 				return 405;
 			}
 
@@ -74,21 +70,15 @@ public class Server implements HttpHandler {
 			observationRecord.setCenterBodyName(json.getString("center_body_name"));
 			observationRecord.setEpoch(json.getString("epoch"));
 			observationRecord.setPayload(json.getJSONObject("metadata").getString("record_payload"));
-			if (!observatoryMissing) {
-				observationRecord.setObservatory(json.getJSONObject("metadata").getJSONArray("observatory"));
-			} else {
-				observationRecord.setObservatory(null);
-			}
-			if (!orbitalElementsMissing) {
-				observationRecord.setOrbitalElements(json.getJSONObject("orbital_elements"));
-			} else {
-				observationRecord.setOrbitalElements(null);
-			}
-			if (!stateVectorMissing) {
-				observationRecord.setStateVector(json.getJSONObject("state_vector"));
-			} else {
-				observationRecord.setStateVector(null);
-			}
+
+			JSONArray observatory = json.getJSONObject("metadata").optJSONArray("observatory");
+			JSONObject orbitalElements = json.optJSONObject("orbital_elements");
+			JSONObject stateVector = json.optJSONObject("state_vector");
+
+			observationRecord.setObservatory(observatory);
+			observationRecord.setOrbitalElements(orbitalElements);
+			observationRecord.setStateVector(stateVector);
+			
 		} catch (JSONException e) {
 			return 405;
 		}
@@ -104,6 +94,13 @@ public class Server implements HttpHandler {
 	}
 
 	private boolean validMessageJson(JSONObject json) {
+		boolean stateVectorMissing = json.isNull("state_vector");
+		boolean orbitalElementsMissing = json.isNull("orbital_elements");
+		boolean invalidMessage = stateVectorMissing && orbitalElementsMissing;
+		if (invalidMessage) {
+			return false;
+		}
+
 		boolean missingData = json.isNull("target_body_name") || json.isNull("center_body_name") || json.isNull("epoch");
 		if (missingData) {
 			return false;
