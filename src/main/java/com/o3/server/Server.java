@@ -114,12 +114,12 @@ public class Server implements HttpHandler {
 		}
 
 		boolean invalidOrbitalElements = !json.isNull("orbital_elements") && (
-			json.getJSONObject("orbital_elements").optDouble("semi_major_axis_au", Double.NaN) == Double.NaN ||
-			json.getJSONObject("orbital_elements").optDouble("eccentricity", Double.NaN) == Double.NaN ||
-			json.getJSONObject("orbital_elements").optDouble("inclination_deg", Double.NaN) == Double.NaN ||
-			json.getJSONObject("orbital_elements").optDouble("longitude_ascending_node_deg", Double.NaN) == Double.NaN ||
-			json.getJSONObject("orbital_elements").optDouble("argument_of_periapsis_deg", Double.NaN) == Double.NaN ||
-			json.getJSONObject("orbital_elements").optDouble("mean_anomaly_deg", Double.NaN) == Double.NaN);
+			Double.isNaN(json.getJSONObject("orbital_elements").optDouble("semi_major_axis_au", Double.NaN)) ||
+			Double.isNaN(json.getJSONObject("orbital_elements").optDouble("eccentricity", Double.NaN)) ||
+			Double.isNaN(json.getJSONObject("orbital_elements").optDouble("inclination_deg", Double.NaN)) ||
+			Double.isNaN(json.getJSONObject("orbital_elements").optDouble("longitude_ascending_node_deg", Double.NaN)) ||
+			Double.isNaN(json.getJSONObject("orbital_elements").optDouble("argument_of_periapsis_deg", Double.NaN)) ||
+			Double.isNaN(json.getJSONObject("orbital_elements").optDouble("mean_anomaly_deg", Double.NaN)));
 		if (invalidOrbitalElements) {
 			return false;
 		}
@@ -127,8 +127,33 @@ public class Server implements HttpHandler {
 		boolean invalidStateVector = !json.isNull("state_vector") && (
 			json.getJSONObject("state_vector").optJSONArray("position_au") == null ||
 			json.getJSONObject("state_vector").optJSONArray("velocity_au_per_day") == null);
+		if (invalidStateVector) {
+			return false;
+		}
 
-		return !invalidStateVector;
+		JSONArray observatory = json.isNull("metadata") || json.getJSONObject("metadata").isNull("observatory")
+			? null
+			: json.getJSONObject("metadata").getJSONArray("observatory");
+		if (observatory == null) {
+			return true;
+		}
+
+		int observatoryIndex = 0;
+		JSONObject observatoryData = observatory.optJSONObject(observatoryIndex++);
+		if (observatoryData == null) {
+			return false;
+		}
+		
+		while (observatoryData != null) {
+			boolean latitudeMissing = Double.isNaN(observatoryData.optDouble("latitude", Double.NaN));
+			boolean longitudeMissing = Double.isNaN(observatoryData.optDouble("longitude", Double.NaN));
+			if (latitudeMissing || longitudeMissing) {
+				return false;
+			}
+			observatoryData = observatory.optJSONObject(observatoryIndex++);
+		}
+
+		return true;
 	}
 
 	private String handleGETrequest() {
