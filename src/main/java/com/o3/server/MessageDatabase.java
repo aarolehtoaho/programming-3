@@ -63,10 +63,15 @@ public class MessageDatabase {
                 "payload TEXT," +
                 "time_received INTEGER NOT NULL" +
                 ");";
+        String createTableCollectionsSQL = "CREATE TABLE collections (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "collection TEXT NOT NULL" +
+                ");";
 
         Statement statement = connection.createStatement();
         statement.executeUpdate(createTableUsersSQL);
         statement.executeUpdate(createTableMessagesSQL);
+        statement.executeUpdate(createTableCollectionsSQL);
         statement.close();
     }
 
@@ -186,6 +191,53 @@ public class MessageDatabase {
         return records;
     }
 
+    public synchronized ObservationRecord getMessage(int id) throws SQLException {
+        if (connection == null) {
+            throw new SQLException("Database not initialized.");
+        }
+
+        String queryMessageSQL = "SELECT * FROM messages WHERE id = " + id + ";";
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(queryMessageSQL);
+        if (resultSet.next()) {
+            String targetBodyName = resultSet.getString("target_body_name");
+            String centerBodyName = resultSet.getString("center_body_name");
+            String epoch = resultSet.getString("epoch");
+            String orbitalElementsStr = resultSet.getString("orbital_elements");
+            String stateVectorStr = resultSet.getString("state_vector");
+            String ownerNickname = resultSet.getString("owner_nickname");
+            String payload = resultSet.getString("payload");
+            String observatoryStr = resultSet.getString("observatory");
+            long timeReceived = resultSet.getLong("time_received");
+            ObservationRecord record = new ObservationRecord(ownerNickname);
+            record.setTargetBodyName(targetBodyName);
+            record.setCenterBodyName(centerBodyName);
+            record.setEpoch(epoch);
+            record.setPayload(payload);
+            record.setTimeReceived(timeReceived);
+            try {
+                record.setOrbitalElements(new JSONObject(orbitalElementsStr));
+            } catch (JSONException e) {
+                record.setOrbitalElements(null);
+            }
+            try {
+                record.setStateVector(new JSONObject(stateVectorStr));
+            } catch (JSONException e) {
+                record.setStateVector(null);
+            }
+            try {
+                record.setObservatory(new JSONArray(observatoryStr));
+            } catch (JSONException e) {
+                record.setObservatory(null);
+            }
+            statement.close();
+            return record;
+        } else {
+            statement.close();
+            return null;
+        }
+    }
+
     public synchronized User getUser(String username) throws SQLException {
         if (connection == null) {
             throw new SQLException("Database not initialized.");
@@ -221,6 +273,63 @@ public class MessageDatabase {
 
         return verifyHash(password, user.getPassword());
 
+    }
+
+    public synchronized JSONArray getCollectionIds() {
+        if (connection == null) {
+            throw new IllegalStateException("Database not initialized.");
+        }
+
+        List<Integer> collectionIds = new java.util.ArrayList<>();
+
+        try {
+            String queryCollectionIdSQL = "SELECT id FROM collections;";
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery(queryCollectionIdSQL);
+
+            while (resultSet.next()) {
+                collectionIds.add(resultSet.getInt("id"));
+            }
+            statement.close();            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        JSONArray jsonArray = new JSONArray(collectionIds);
+        return jsonArray;
+    }
+
+    public synchronized JSONArray getMessagesByCollectionId(int collectionId) {
+        JSONArray collection = getCollection(collectionId);
+        JSONArray messages = new JSONArray();
+        
+        for (int i = 0; i < collection.length(); i++) {
+            int messageId = collection.getInt(i);
+            try {
+                messages.put(getMessage(messageId));
+            } catch (SQLException e) {}
+        }
+        return messages;
+    }
+
+    private synchronized JSONArray getCollection(int id) {
+        if (connection == null) {
+            throw new IllegalStateException("Database not initialized.");
+        }
+
+        JSONArray collection = new JSONArray();
+
+        try {
+            String queryCollectionSQL = "SELECT collection FROM collections WHERE id = " + id + ";";
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery(queryCollectionSQL);
+            while (resultSet.next()) {
+                collection = new JSONArray(resultSet.getString("collection"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return collection;
     }
 
 	private String generateHash(String password) {
