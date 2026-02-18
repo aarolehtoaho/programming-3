@@ -227,6 +227,7 @@ public class Server implements HttpHandler {
 			httpContext.setAuthenticator(userAuthenticator);
 
 			server.createContext("/registration", new RegistrationHandler(userAuthenticator));
+			server.createContext("/collections", new Collections());
 
 			MessageDatabase database = MessageDatabase.getInstance();
 			String dbPath = System.getenv("DATABASE_PATH");
