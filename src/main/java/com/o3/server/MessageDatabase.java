@@ -93,9 +93,7 @@ public class MessageDatabase {
     }
 
     public synchronized void insertMessage(ObservationRecord record) throws SQLException {
-        if (connection == null) {
-            throw new SQLException("Database not initialized.");
-        }
+        checkDatabase();
 
         String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, " +
                 "orbital_elements, state_vector, owner_nickname, observatory, payload, time_received) " +
@@ -135,9 +133,7 @@ public class MessageDatabase {
     }
 
     public synchronized List<ObservationRecord> getAllMessages() throws SQLException {
-        if (connection == null) {
-            throw new SQLException("Database not initialized.");
-        }
+        checkDatabase();
 
         String queryMessagesSQL = "SELECT * FROM messages;";
         Statement statement = connection.createStatement();
@@ -192,69 +188,69 @@ public class MessageDatabase {
     }
 
     public synchronized ObservationRecord getMessage(int id) throws SQLException {
-        if (connection == null) {
-            throw new SQLException("Database not initialized.");
-        }
+        checkDatabase();
 
-        String queryMessageSQL = "SELECT * FROM messages WHERE id = " + id + ";";
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(queryMessageSQL);
-        if (resultSet.next()) {
-            String targetBodyName = resultSet.getString("target_body_name");
-            String centerBodyName = resultSet.getString("center_body_name");
-            String epoch = resultSet.getString("epoch");
-            String orbitalElementsStr = resultSet.getString("orbital_elements");
-            String stateVectorStr = resultSet.getString("state_vector");
-            String ownerNickname = resultSet.getString("owner_nickname");
-            String payload = resultSet.getString("payload");
-            String observatoryStr = resultSet.getString("observatory");
-            long timeReceived = resultSet.getLong("time_received");
-            ObservationRecord record = new ObservationRecord(ownerNickname);
-            record.setTargetBodyName(targetBodyName);
-            record.setCenterBodyName(centerBodyName);
-            record.setEpoch(epoch);
-            record.setPayload(payload);
-            record.setTimeReceived(timeReceived);
-            try {
-                record.setOrbitalElements(new JSONObject(orbitalElementsStr));
-            } catch (JSONException e) {
-                record.setOrbitalElements(null);
+        String queryMessageSQL = "SELECT * FROM messages WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(queryMessageSQL)) {
+            statement.setInt(1, id);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                String targetBodyName = resultSet.getString("target_body_name");
+                String centerBodyName = resultSet.getString("center_body_name");
+                String epoch = resultSet.getString("epoch");
+                String orbitalElementsStr = resultSet.getString("orbital_elements");
+                String stateVectorStr = resultSet.getString("state_vector");
+                String ownerNickname = resultSet.getString("owner_nickname");
+                String payload = resultSet.getString("payload");
+                String observatoryStr = resultSet.getString("observatory");
+                long timeReceived = resultSet.getLong("time_received");
+                ObservationRecord record = new ObservationRecord(ownerNickname);
+                record.setTargetBodyName(targetBodyName);
+                record.setCenterBodyName(centerBodyName);
+                record.setEpoch(epoch);
+                record.setPayload(payload);
+                record.setTimeReceived(timeReceived);
+                try {
+                    record.setOrbitalElements(new JSONObject(orbitalElementsStr));
+                } catch (JSONException e) {
+                    record.setOrbitalElements(null);
+                }
+                try {
+                    record.setStateVector(new JSONObject(stateVectorStr));
+                } catch (JSONException e) {
+                    record.setStateVector(null);
+                }
+                try {
+                    record.setObservatory(new JSONArray(observatoryStr));
+                } catch (JSONException e) {
+                    record.setObservatory(null);
+                }
+                statement.close();
+                return record;
+            } else {
+                statement.close();
+                return null;
             }
-            try {
-                record.setStateVector(new JSONObject(stateVectorStr));
-            } catch (JSONException e) {
-                record.setStateVector(null);
-            }
-            try {
-                record.setObservatory(new JSONArray(observatoryStr));
-            } catch (JSONException e) {
-                record.setObservatory(null);
-            }
-            statement.close();
-            return record;
-        } else {
-            statement.close();
-            return null;
         }
     }
 
     public synchronized User getUser(String username) throws SQLException {
-        if (connection == null) {
-            throw new SQLException("Database not initialized.");
-        }
+        checkDatabase();
 
-        String queryUserSQL = "SELECT * FROM users WHERE username = '" + username + "';";
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(queryUserSQL);
-        if (resultSet.next()) {
-            String password = resultSet.getString("password");
-            String email = resultSet.getString("email");
-            String nickname = resultSet.getString("nickname");
-            statement.close();
-            return new User(username, password, email, nickname, true);
-        } else {
-            statement.close();
-            return null;
+        String queryUserSQL = "SELECT * FROM users WHERE username = ?";
+        try (PreparedStatement statement = connection.prepareStatement(queryUserSQL)) {
+            statement.setString(1, username);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                String password = resultSet.getString("password");
+                String email = resultSet.getString("email");
+                String nickname = resultSet.getString("nickname");
+                statement.close();
+                return new User(username, password, email, nickname, true);
+            } else {
+                statement.close();
+                return null;
+            }
         }
     }
 
@@ -276,9 +272,7 @@ public class MessageDatabase {
     }
 
     public synchronized JSONArray getCollectionIds() {
-        if (connection == null) {
-            throw new IllegalStateException("Database not initialized.");
-        }
+        checkDatabase();
 
         List<Integer> collectionIds = new java.util.ArrayList<>();
 
@@ -307,22 +301,63 @@ public class MessageDatabase {
             int messageId = collection.getInt(i);
             try {
                 messages.put(getMessage(messageId));
-            } catch (SQLException e) {}
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
         return messages;
     }
 
-    private synchronized JSONArray getCollection(int id) {
-        if (connection == null) {
-            throw new IllegalStateException("Database not initialized.");
+    public synchronized int createCollection(JSONArray messageIds) {
+        checkDatabase();
+
+        String insertCollectionSQL = "INSERT INTO collections (collection) VALUES (?);";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(insertCollectionSQL)) {
+            preparedStatement.setString(1, messageIds.toString());
+            preparedStatement.executeUpdate();
+            String queryNewCollectionIdSQL = "SELECT last_insert_rowid();";
+            try (PreparedStatement queryStatement = connection.prepareStatement(queryNewCollectionIdSQL)) {
+                ResultSet resultSet = queryStatement.executeQuery();
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+        return -1;
+    }
+
+    public synchronized boolean addMessagesToCollection(int collectionId, JSONArray messageIds) {
+        checkDatabase();
+ 
+        JSONArray currentCollection = getCollection(collectionId);
+        for (int i = 0; i < messageIds.length(); i++) {
+            if (!currentCollection.toList().contains(messageIds.get(i))) {
+                currentCollection.put(messageIds.get(i));
+            }
+        }
+        String updateCollectionSQL = "UPDATE collections SET collection = ? WHERE id = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(updateCollectionSQL)) {
+            preparedStatement.setString(1, currentCollection.toString());
+            preparedStatement.setInt(2, collectionId);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    private synchronized JSONArray getCollection(int id) {
+        checkDatabase();
 
         JSONArray collection = new JSONArray();
 
-        try {
-            String queryCollectionSQL = "SELECT collection FROM collections WHERE id = " + id + ";";
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(queryCollectionSQL);
+        String queryCollectionSQL = "SELECT collection FROM collections WHERE id = ?;";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(queryCollectionSQL)) {
+            preparedStatement.setInt(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 collection = new JSONArray(resultSet.getString("collection"));
             }
@@ -338,5 +373,11 @@ public class MessageDatabase {
 
     private boolean verifyHash(String password, String storedHash) {
         return Crypt.crypt(password, storedHash).equals(storedHash);
+    }
+
+    private synchronized void checkDatabase() {
+        if (connection == null) {
+            throw new IllegalStateException("Database not initialized.");
+        }
     }
 }
