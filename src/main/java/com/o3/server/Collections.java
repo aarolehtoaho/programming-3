@@ -20,7 +20,8 @@ public class Collections implements HttpHandler {
 		switch (exchange.getRequestMethod().toUpperCase()) {
 			case "POST":
                 String action = suffix.toLowerCase();
-                JSONObject responseJson = handlePOSTRequest(exchange, action);
+                String requestBody = new String(exchange.getRequestBody().readAllBytes());
+                JSONObject responseJson = handlePOSTRequest(action, requestBody);
                 handlePOSTResponse(exchange, responseJson);
 				break;
 			case "GET":
@@ -54,14 +55,14 @@ public class Collections implements HttpHandler {
         return messages.toString();
     }
 
-    private JSONObject handlePOSTRequest(HttpExchange exchange, String action) {
+    private JSONObject handlePOSTRequest(String action, String requestBody) {
         JSONArray messageIds;
         switch (action) {
             case "create":
                 JSONObject responseJsonCreate = new JSONObject("{\"created_collection_id\": -1, \"code\": 200}");
                 try {
-                    messageIds = getMessageIDs(exchange);    
-                } catch (IOException | JSONException e) {
+                    messageIds = getMessageIDs(requestBody);    
+                } catch (JSONException e) {
                     responseJsonCreate.put("code", 400);
                     return responseJsonCreate;
                 }
@@ -73,14 +74,14 @@ public class Collections implements HttpHandler {
                 return responseJsonCreate;
             case "add":
                 JSONObject responseJsonAdd = new JSONObject("{\"code\": 200}");
-                int collectionId = getCollectionId(exchange);
+                int collectionId = getCollectionId(requestBody);
                 if (collectionId == -1) {
                     responseJsonAdd.put("code", 400);
                     return responseJsonAdd;
                 }
                 try {
-                    messageIds = getMessageIDs(exchange);
-                } catch (IOException | JSONException e) {
+                    messageIds = getMessageIDs(requestBody);
+                } catch (JSONException e) {
                     responseJsonAdd.put("code", 400);
                     return responseJsonAdd;
                 }
@@ -119,8 +120,7 @@ public class Collections implements HttpHandler {
 		outputStream.close();
 	}
 
-    private JSONArray getMessageIDs(HttpExchange exchange) throws IOException, JSONException {
-        String requestBody = new String(exchange.getRequestBody().readAllBytes(), "UTF-8");
+    private JSONArray getMessageIDs(String requestBody) throws JSONException {
         try {
             return new JSONArray(requestBody);
         } catch (JSONException e1) {
@@ -129,12 +129,11 @@ public class Collections implements HttpHandler {
         }
     }
 
-    private int getCollectionId(HttpExchange exchange) {
+    private int getCollectionId(String requestBody) {
         try {
-            String requestBody = new String(exchange.getRequestBody().readAllBytes(), "UTF-8");
             JSONObject jsonObject = new JSONObject(requestBody);
             return jsonObject.getInt("collection_id");
-        } catch (JSONException | IOException e) {
+        } catch (JSONException e) {
             return -1;
         }
     }
