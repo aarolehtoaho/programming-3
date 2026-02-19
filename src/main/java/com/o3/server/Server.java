@@ -106,6 +106,12 @@ public class Server implements HttpHandler {
 			return false;
 		}
 
+		String iso8601DateFormat = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z";
+		boolean validEpoch = json.optString("epoch", "").matches(iso8601DateFormat);
+		if (!validEpoch) {
+			return false;
+		}
+
 		boolean invalidTypes = json.optString("target_body_name", "").isEmpty() ||
 			json.optString("center_body_name", "").isEmpty() ||
 			json.optString("epoch", "").isEmpty();
@@ -173,6 +179,7 @@ public class Server implements HttpHandler {
 	}
 
 	private void handlePOSTResponse(HttpExchange httpExchange, int code) throws IOException {
+		httpExchange.getResponseHeaders().set("Content-Type", "application/json");
 		httpExchange.sendResponseHeaders(code, -1);
 	}
 
@@ -182,6 +189,7 @@ public class Server implements HttpHandler {
 
 	private void handleResponse(HttpExchange httpExchange, int code, String responseString) throws IOException {
 		byte[] bytes = responseString.getBytes("UTF-8");
+		httpExchange.getResponseHeaders().set("Content-Type", "application/json");
 		httpExchange.sendResponseHeaders(code, bytes.length);
 		OutputStream outputStream = httpExchange.getResponseBody();
 		outputStream.write(bytes);
