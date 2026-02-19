@@ -15,6 +15,7 @@ public class Collections implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
         String suffix = path.substring("/collections/".length());
+        suffix = suffix.replaceAll("/$", "");
 
 		switch (exchange.getRequestMethod().toUpperCase()) {
 			case "POST":
@@ -58,8 +59,9 @@ public class Collections implements HttpHandler {
         switch (action) {
             case "create":
                 JSONObject responseJsonCreate = new JSONObject("{\"created_collection_id\": -1, \"code\": 200}");
-                messageIds = getMessageIDs(exchange);
-                if (messageIds.length() == 0) {
+                try {
+                    messageIds = getMessageIDs(exchange);    
+                } catch (IOException | JSONException e) {
                     responseJsonCreate.put("code", 400);
                     return responseJsonCreate;
                 }
@@ -72,11 +74,17 @@ public class Collections implements HttpHandler {
             case "add":
                 JSONObject responseJsonAdd = new JSONObject("{\"code\": 200}");
                 int collectionId = getCollectionId(exchange);
-                messageIds = getMessageIDs(exchange);
-                if (collectionId == -1 || messageIds.length() == 0) {
+                if (collectionId == -1) {
                     responseJsonAdd.put("code", 400);
                     return responseJsonAdd;
                 }
+                try {
+                    messageIds = getMessageIDs(exchange);
+                } catch (IOException | JSONException e) {
+                    responseJsonAdd.put("code", 400);
+                    return responseJsonAdd;
+                }
+
                 boolean success = MessageDatabase.getInstance().addMessagesToCollection(collectionId, messageIds);
                 if (!success) {
                     responseJsonAdd.put("code", 500);
@@ -111,22 +119,13 @@ public class Collections implements HttpHandler {
 		outputStream.close();
 	}
 
-    private JSONArray getMessageIDs(HttpExchange exchange) {
-        String requestBody;
-        try {
-            requestBody = new String(exchange.getRequestBody().readAllBytes(), "UTF-8");
-        } catch (IOException e) {
-            return new JSONArray();
-        }
+    private JSONArray getMessageIDs(HttpExchange exchange) throws IOException, JSONException {
+        String requestBody = new String(exchange.getRequestBody().readAllBytes(), "UTF-8");
         try {
             return new JSONArray(requestBody);
         } catch (JSONException e1) {
-            try {
-                JSONObject jsonObject = new JSONObject(requestBody);
-                return jsonObject.getJSONArray("message_ids");
-            } catch (JSONException e2) {
-                return new JSONArray();
-            }
+            JSONObject jsonObject = new JSONObject(requestBody);
+            return jsonObject.getJSONArray("message_ids");
         }
     }
 

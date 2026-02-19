@@ -159,13 +159,13 @@ public class MessageDatabase {
             record.setPayload(payload);
             record.setTimeReceived(timeReceived);
 
-            JSONObject oribitalElements;
+            JSONObject orbitalElements;
             JSONObject stateVector;
             JSONArray observatory;
             try {
-                oribitalElements = new JSONObject(orbitalElementsStr);
+                orbitalElements = new JSONObject(orbitalElementsStr);
             } catch (JSONException | NullPointerException e) {
-                oribitalElements = null;
+                orbitalElements = null;
             }
             try {
                 stateVector = new JSONObject(stateVectorStr);
@@ -177,7 +177,7 @@ public class MessageDatabase {
             } catch (JSONException | NullPointerException e) {
                 observatory = null;
             }
-            record.setOrbitalElements(oribitalElements);
+            record.setOrbitalElements(orbitalElements);
             record.setStateVector(stateVector);
             record.setObservatory(observatory);
 
@@ -205,26 +205,35 @@ public class MessageDatabase {
                 String observatoryStr = resultSet.getString("observatory");
                 long timeReceived = resultSet.getLong("time_received");
                 ObservationRecord record = new ObservationRecord(ownerNickname);
+                record.setId(id);
                 record.setTargetBodyName(targetBodyName);
                 record.setCenterBodyName(centerBodyName);
                 record.setEpoch(epoch);
                 record.setPayload(payload);
                 record.setTimeReceived(timeReceived);
+
+                JSONObject orbitalElements;
+                JSONObject stateVector;
+                JSONArray observatory;
                 try {
-                    record.setOrbitalElements(new JSONObject(orbitalElementsStr));
-                } catch (JSONException e) {
-                    record.setOrbitalElements(null);
+                    orbitalElements = new JSONObject(orbitalElementsStr);
+                } catch (JSONException | NullPointerException e) {
+                    orbitalElements = null;
                 }
                 try {
-                    record.setStateVector(new JSONObject(stateVectorStr));
-                } catch (JSONException e) {
-                    record.setStateVector(null);
+                    stateVector = new JSONObject(stateVectorStr);
+                } catch (JSONException | NullPointerException e) {
+                    stateVector = null;
                 }
                 try {
-                    record.setObservatory(new JSONArray(observatoryStr));
-                } catch (JSONException e) {
-                    record.setObservatory(null);
+                    observatory = new JSONArray(observatoryStr);
+                } catch (JSONException | NullPointerException e) {
+                    observatory = null;
                 }
+                record.setOrbitalElements(orbitalElements);
+                record.setStateVector(stateVector);
+                record.setObservatory(observatory);
+
                 statement.close();
                 return record;
             } else {
@@ -300,7 +309,7 @@ public class MessageDatabase {
         for (int i = 0; i < collection.length(); i++) {
             int messageId = collection.getInt(i);
             try {
-                messages.put(getMessage(messageId));
+                messages.put(getMessage(messageId).toJSON());
             } catch (SQLException e) {
                 e.printStackTrace();
             }
