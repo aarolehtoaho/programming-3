@@ -24,7 +24,7 @@ public class ObservationRecord {
         this.orbitalElements = null;
         this.stateVector = null;
 
-        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null, \"id\": -1, \"observatory\": [], \"record_payload\": null}";
+        String metadataStr = "{\"record_time_received\": null,\"record_owner\": null, \"id\": -1, \"record_payload\": null}";
         this.metadata = new JSONObject(metadataStr);
 
         long epochMillis = System.currentTimeMillis();
@@ -55,6 +55,14 @@ public class ObservationRecord {
         ZonedDateTime received = ZonedDateTime.parse(timeStr);
         return received.toInstant().toEpochMilli();
     }
+    public long getTimeEditedAsInt() {
+        if (!metadata.isNull("edited")) {
+            String timeStr = metadata.getString("edited");
+            ZonedDateTime edited = ZonedDateTime.parse(timeStr);
+            return edited.toInstant().toEpochMilli();
+        }
+        return -1;
+    }
     public String getRecordOwner() { return metadata.getString("record_owner"); }
     public String getPayload() { return metadata.getString("record_payload"); }
     public int getId() { return metadata.getInt("id"); }
@@ -67,6 +75,12 @@ public class ObservationRecord {
         }
         return observatory;
     }
+    public String getUpdateReason() {
+        if (!metadata.isNull("update_reason")) {
+            return metadata.getString("update_reason");
+        }
+        return null;
+    }
 
     public void setId(int id) { this.metadata.put("id", id); }
     public void setTargetBodyName(String targetBodyName) { this.targetBodyName = targetBodyName; }
@@ -76,6 +90,10 @@ public class ObservationRecord {
     public void setTimeReceived(long timeReceived) {
         String receivedStr = epochMillisToString(timeReceived);
         this.metadata.put("record_time_received", receivedStr);
+    }
+    public void setTimeEdited(long edited) {
+        String editedStr = epochMillisToString(edited);
+        this.metadata.put("edited", editedStr);
     }
     public void setOrbitalElements(JSONObject orbitalElements) throws JSONException {
         if (orbitalElements != null) {
@@ -99,6 +117,9 @@ public class ObservationRecord {
     }
 
     public void setObservatory(JSONArray observatory) throws JSONException {
+        if (observatory == null) {
+            return;
+        }
         for (int i = 0; i < observatory.length(); i++) {
             JSONObject obs = observatory.getJSONObject(i);
             if (obs.has("weather")) {
@@ -109,6 +130,10 @@ public class ObservationRecord {
             }
         }
         this.metadata.put("observatory", observatory);
+    }
+
+    public void setUpdateReason(String updateReason) {
+        this.metadata.put("update_reason", updateReason);
     }
 
     public JSONObject toJSON() {
