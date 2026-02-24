@@ -98,7 +98,18 @@ public class ObservationRecord {
         this.stateVector = stateVector;
     }
 
-    public void setObservatory(JSONArray observatory) throws JSONException { this.metadata.put("observatory", observatory); }
+    public void setObservatory(JSONArray observatory) throws JSONException {
+        for (int i = 0; i < observatory.length(); i++) {
+            JSONObject obs = observatory.getJSONObject(i);
+            if (obs.has("weather")) {
+                double latitude = obs.getDouble("latitude");
+                double longitude = obs.getDouble("longitude");
+                JSONObject weather = Weather.getWeatherData(latitude, longitude);
+                obs.put("weather", weather);
+            }
+        }
+        this.metadata.put("observatory", observatory);
+    }
 
     public JSONObject toJSON() {
         JSONObject json = new JSONObject();
