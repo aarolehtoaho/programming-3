@@ -61,7 +61,9 @@ public class MessageDatabase {
                 "observatory TEXT," +
                 "owner_nickname TEXT NOT NULL," +
                 "payload TEXT," +
-                "time_received INTEGER NOT NULL" +
+                "time_received INTEGER NOT NULL," +
+                "time_edited INTEGER," +
+                "update_reason TEXT" +
                 ");";
         String createTableCollectionsSQL = "CREATE TABLE collections (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -95,9 +97,9 @@ public class MessageDatabase {
     public synchronized void insertMessage(ObservationRecord record) throws SQLException {
         checkDatabase();
 
-        String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, " +
-                "orbital_elements, state_vector, owner_nickname, observatory, payload, time_received) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        String insertMessageSQL = "INSERT INTO messages (target_body_name, center_body_name, epoch, orbital_elements, " +
+                "state_vector, owner_nickname, observatory, payload, time_received, time_edited, update_reason) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         try (PreparedStatement statement = connection.prepareStatement(insertMessageSQL)) {
             statement.setString(1, record.getTargetBodyName());
             statement.setString(2, record.getCenterBodyName());
@@ -128,6 +130,68 @@ public class MessageDatabase {
 
             statement.setString(8, record.getPayload());
             statement.setLong(9, record.getTimeReceivedAsInt());
+            
+            long timeEdited = record.getTimeEditedAsInt();
+            
+            String updateReason = record.getUpdateReason();
+            if (updateReason != null) {
+                statement.setString(11, updateReason);
+            } else {
+                statement.setNull(11, java.sql.Types.VARCHAR);
+            }
+            
+            statement.executeUpdate();
+        }
+    }
+
+    public synchronized void updateMessage(ObservationRecord record) throws SQLException {
+        checkDatabase();
+
+        String updateMessageSQL = "UPDATE messages SET target_body_name = ?, center_body_name = ?, epoch = ?, orbital_elements = ?, " +
+                "state_vector = ?, owner_nickname = ?, observatory = ?, payload = ?, time_received = ?, time_edited = ?, update_reason = ? " +
+                "WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(updateMessageSQL)) {
+            statement.setString(1, record.getTargetBodyName());
+            statement.setString(2, record.getCenterBodyName());
+            statement.setString(3, record.getEpoch());
+
+            String orbitalElements = record.getOrbitalElements();
+            if ("NULL".equalsIgnoreCase(orbitalElements)) {
+                statement.setNull(4, java.sql.Types.VARCHAR);
+            } else {
+                statement.setString(4, orbitalElements);
+            }
+
+            String stateVector = record.getStateVector();
+            if ("NULL".equalsIgnoreCase(stateVector)) {
+                statement.setNull(5, java.sql.Types.VARCHAR);
+            } else {
+                statement.setString(5, stateVector);
+            }
+
+            statement.setString(6, record.getRecordOwner());
+
+            String observatory = record.getObservatory();
+            if ("NULL".equalsIgnoreCase(observatory)) {
+                statement.setNull(7, java.sql.Types.VARCHAR);
+            } else {
+                statement.setString(7, observatory);
+            }
+
+            statement.setString(8, record.getPayload());
+            statement.setLong(9, record.getTimeReceivedAsInt());
+            
+            long timeEdited = record.getTimeEditedAsInt();
+            statement.setLong(10, timeEdited);
+            
+            String updateReason = record.getUpdateReason();
+            if (updateReason != null) {
+                statement.setString(11, updateReason);
+            } else {
+                statement.setNull(11, java.sql.Types.VARCHAR);
+            }
+            
+            statement.setInt(12, record.getId());
             statement.executeUpdate();
         }
     }
@@ -151,6 +215,11 @@ public class MessageDatabase {
             String payload = resultSet.getString("payload");
             String observatoryStr = resultSet.getString("observatory");
             long timeReceived = resultSet.getLong("time_received");
+            long timeEdited = -1;
+            try {
+                timeEdited = resultSet.getLong("time_edited");
+            } catch (SQLException e) {}
+            String updateReason = resultSet.getString("update_reason");
             ObservationRecord record = new ObservationRecord(ownerNickname);
             record.setId(id);
             record.setTargetBodyName(targetBodyName);
@@ -158,6 +227,12 @@ public class MessageDatabase {
             record.setEpoch(epoch);
             record.setPayload(payload);
             record.setTimeReceived(timeReceived);
+            if (timeEdited > 0) {
+                record.setTimeEdited(timeEdited);
+            }
+            if (updateReason != null) {
+                record.setUpdateReason(updateReason);
+            }
 
             JSONObject orbitalElements;
             JSONObject stateVector;
@@ -204,6 +279,11 @@ public class MessageDatabase {
                 String payload = resultSet.getString("payload");
                 String observatoryStr = resultSet.getString("observatory");
                 long timeReceived = resultSet.getLong("time_received");
+                long timeEdited = -1;
+                try {
+                    timeEdited = resultSet.getLong("time_edited");
+                } catch (SQLException e) {}
+                String updateReason = resultSet.getString("update_reason");
                 ObservationRecord record = new ObservationRecord(ownerNickname);
                 record.setId(id);
                 record.setTargetBodyName(targetBodyName);
@@ -211,6 +291,12 @@ public class MessageDatabase {
                 record.setEpoch(epoch);
                 record.setPayload(payload);
                 record.setTimeReceived(timeReceived);
+                if (timeEdited > 0) {
+                    record.setTimeEdited(timeEdited);
+                }
+                if (updateReason != null) {
+                    record.setUpdateReason(updateReason);
+                }
 
                 JSONObject orbitalElements;
                 JSONObject stateVector;
