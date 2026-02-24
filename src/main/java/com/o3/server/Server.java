@@ -35,12 +35,16 @@ public class Server implements HttpHandler {
 	public void handle(HttpExchange exchange) throws IOException {
 		switch (exchange.getRequestMethod().toUpperCase()) {
 			case "POST":
-				int code = handlePOSTrequest(exchange);
-				handlePOSTResponse(exchange, code);
+				int postResult = handlePOSTrequest(exchange);
+				handlePOSTResponse(exchange, postResult);
 				break;
 			case "GET":
 				String responseString = handleGETrequest();
 				handleGETResponse(exchange, responseString);
+				break;
+			case "PUT":
+				int putResult = handlePUTrequest(exchange);
+				handlePUTResponse(exchange, putResult);
 				break;
 			default:
 				handleResponse(exchange, 400, "Not supported");
@@ -178,6 +182,99 @@ public class Server implements HttpHandler {
 		return responseMessages.toString();
 	}
 
+	private int handlePUTrequest(HttpExchange httpExchange) throws IOException {
+        String path = httpExchange.getRequestURI().getPath();
+        String idString = path.substring("/datarecord?id=".length());
+		int id = Integer.parseInt(idString);
+
+		ObservationRecord oldMessage;
+		try {
+			oldMessage = MessageDatabase.getInstance().getMessage(id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return 500;
+		}
+		if (oldMessage == null) {
+			return 404;
+		}
+
+		String originalOwner = oldMessage.getRecordOwner();
+		String username = httpExchange.getPrincipal().getUsername();
+		String requestNickname = ((UserAuthenticator) httpExchange.getHttpContext().getAuthenticator()).getNickname(username);
+
+		if (!originalOwner.equals(requestNickname)) {
+			return 403;
+		}
+
+		InputStreamReader inputStream = new InputStreamReader(httpExchange.getRequestBody(), StandardCharsets.UTF_8);
+		BufferedReader bufferedReader = new BufferedReader(inputStream);
+		String updateMessageText = bufferedReader.lines().collect(Collectors.joining("\n")).trim();
+		bufferedReader.close();
+		inputStream.close();
+
+		ObservationRecord updatedMessage = oldMessage;
+		try {
+			JSONObject updateJson = new JSONObject(updateMessageText);
+			// Set missing field to old message values
+			if (updateJson.optString("target_body_name", "").isEmpty()) {
+				updateJson.put("target_body_name", oldMessage.getTargetBodyName());
+			}
+			if (updateJson.optString("center_body_name", "").isEmpty()) {
+				updateJson.put("center_body_name", oldMessage.getCenterBodyName());
+			}
+			if (updateJson.optString("epoch", "").isEmpty()) {
+				updateJson.put("epoch", oldMessage.getEpoch());
+			}
+			if (updateJson.isNull("orbital_elements")) {
+				updateJson.put("orbital_elements", oldMessage.getOrbitalElements());
+			}
+			if (updateJson.isNull("state_vector")) {
+				updateJson.put("state_vector", oldMessage.getStateVector());
+			}
+			if (updateJson.getJSONObject("metadata").isNull("observatory")) {
+				updateJson.getJSONObject("metadata").put("observatory", oldMessage.getObservatory());
+			}
+			if (updateJson.getJSONObject("metadata").isNull("record_payload")) {
+				updateJson.getJSONObject("metadata").put("record_payload", oldMessage.getPayload());
+			}
+
+			if (updateJson.getJSONObject("metadata").isNull("update_reason")) {
+				updateJson.getJSONObject("metadata").put("update_reason", "N/A");
+			}
+
+			if (!validMessageJson(updateJson)) {
+				return 405;
+			}
+
+			// Construct the updated ObservationRecord
+			updatedMessage.setTargetBodyName(updateJson.getString("target_body_name"));
+			updatedMessage.setCenterBodyName(updateJson.getString("center_body_name"));
+			updatedMessage.setEpoch(updateJson.getString("epoch"));
+			updatedMessage.setPayload(updateJson.getJSONObject("metadata").getString("record_payload"));
+			updatedMessage.setUpdateReason(updateJson.getJSONObject("metadata").getString("update_reason"));
+			updatedMessage.setTimeEdited(System.currentTimeMillis());
+
+			JSONArray observatory = updateJson.getJSONObject("metadata").optJSONArray("observatory");
+			JSONObject orbitalElements = updateJson.optJSONObject("orbital_elements");
+			JSONObject stateVector = updateJson.optJSONObject("state_vector");
+
+			updatedMessage.setObservatory(observatory);
+			updatedMessage.setOrbitalElements(orbitalElements);
+			updatedMessage.setStateVector(stateVector);
+		} catch (JSONException e) {
+			return 400;
+		}
+
+		try {
+			MessageDatabase.getInstance().updateMessage(updatedMessage);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return 500;
+		}
+
+		return 200;
+	}
+
 	private void handlePOSTResponse(HttpExchange httpExchange, int code) throws IOException {
 		httpExchange.getResponseHeaders().set("Content-Type", "application/json");
 		httpExchange.sendResponseHeaders(code, -1);
@@ -185,6 +282,11 @@ public class Server implements HttpHandler {
 
 	private void handleGETResponse(HttpExchange httpExchange, String responseString) throws IOException {
 		handleResponse(httpExchange, 200, responseString);
+	}
+
+	private void handlePUTResponse(HttpExchange httpExchange, int code) throws IOException {
+		httpExchange.getResponseHeaders().set("Content-Type", "application/json");
+		httpExchange.sendResponseHeaders(code, -1);
 	}
 
 	private void handleResponse(HttpExchange httpExchange, int code, String responseString) throws IOException {
