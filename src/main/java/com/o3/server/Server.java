@@ -183,9 +183,17 @@ public class Server implements HttpHandler {
 	}
 
 	private int handlePUTrequest(HttpExchange httpExchange) throws IOException {
-        String path = httpExchange.getRequestURI().getPath();
-        String idString = path.substring("/datarecord?id=".length());
-		int id = Integer.parseInt(idString);
+        String query = httpExchange.getRequestURI().getQuery();
+		if (query == null || !query.startsWith("id=")) {
+			return 400;
+		}
+		int id;
+		try {
+			String idString = query.substring("id=".length());
+			id = Integer.parseInt(idString);
+		} catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+			return 400;
+		}
 
 		ObservationRecord oldMessage;
 		try {
@@ -225,14 +233,14 @@ public class Server implements HttpHandler {
 			if (updateJson.optString("epoch", "").isEmpty()) {
 				updateJson.put("epoch", oldMessage.getEpoch());
 			}
-			if (updateJson.isNull("orbital_elements")) {
-				updateJson.put("orbital_elements", oldMessage.getOrbitalElements());
+			if (updateJson.isNull("orbital_elements") && !"NULL".equals(oldMessage.getOrbitalElements())) {
+				updateJson.put("orbital_elements", new JSONObject(oldMessage.getOrbitalElements()));
 			}
-			if (updateJson.isNull("state_vector")) {
-				updateJson.put("state_vector", oldMessage.getStateVector());
+			if (updateJson.isNull("state_vector") && !"NULL".equals(oldMessage.getStateVector())) {
+				updateJson.put("state_vector", new JSONObject(oldMessage.getStateVector()));
 			}
-			if (updateJson.getJSONObject("metadata").isNull("observatory")) {
-				updateJson.getJSONObject("metadata").put("observatory", oldMessage.getObservatory());
+			if (updateJson.getJSONObject("metadata").isNull("observatory") && !"NULL".equals(oldMessage.getObservatory())) {
+				updateJson.getJSONObject("metadata").put("observatory", new JSONArray(oldMessage.getObservatory()));
 			}
 			if (updateJson.getJSONObject("metadata").isNull("record_payload")) {
 				updateJson.getJSONObject("metadata").put("record_payload", oldMessage.getPayload());
